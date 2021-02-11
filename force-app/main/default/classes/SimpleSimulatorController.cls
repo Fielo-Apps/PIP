@@ -27,7 +27,7 @@ public class SimpleSimulatorController {
         }
 
         if (fieldsByObject.isEmpty()) {
-            fieldsByObject.put(objectName, new Set<String>{'Id'});
+            fieldsByObject.put(objectName, new Set<String>{'Id','Name'});
         }
 
         List<Map<String,Object>> columns = new List<Map<String,Object>>();
