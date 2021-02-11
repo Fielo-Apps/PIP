@@ -1,0 +1,29 @@
+<template>
+    <div class="fielo-lookup-container" data-field-name={fieldName}>
+        <template if:true={hasLabel}>
+            <div class="input-label">
+                {fieldLabel}
+            </div>
+        </template>
+
+        <lightning-pill-container class="selected-record slds-hide" items={items} onitemremove={handleItemRemove}></lightning-pill-container>
+    
+        <lightning-input class="search-input" variant="label-hidden" label="search input" type="search" name="lookup" onchange={handleSearch} ></lightning-input>
+    
+        <template if:true={hasOptions}>
+            <lightning-vertical-navigation onselect={handleLookupSelect} class="slds-hide fielo-lookup-results">
+        
+                <lightning-vertical-navigation-section>
+        
+                    <template for:each={finalOptions} for:item="option" for:index="index">
+        
+                        <lightning-vertical-navigation-item key={option.Id} label={option.Name} name={option.Id}></lightning-vertical-navigation-item>
+        
+                    </template>
+        
+                </lightning-vertical-navigation-section>
+        
+            </lightning-vertical-navigation>
+        </template>
+    </div>
+</template>
