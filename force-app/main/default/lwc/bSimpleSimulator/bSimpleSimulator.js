@@ -2,6 +2,7 @@ import { LightningElement, wire, api, track } from 'lwc';
 import getRelatedLists from '@salesforce/apex/SimulatorService.getRelatedLists';
 import getRecords from '@salesforce/apex/SimpleSimulatorController.getRecords';
 import simulate from '@salesforce/apex/SimpleSimulatorController.simulate';
+import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 
 export default class BSimpleSimulator extends LightningElement {
 
@@ -102,7 +103,14 @@ export default class BSimpleSimulator extends LightningElement {
         this.output = output;
       })
       .catch(error => {
-        console.error(error)
+        console.error(error);
+        const errorEvent = new ShowToastEvent({
+          title: 'Error',
+          message: error && error.body && error.body.message || JSON.stringify(error),
+          variant: 'error',
+          mode: 'dismissable'
+        });
+        this.dispatchEvent(errorEvent);
       })
     }
 }
