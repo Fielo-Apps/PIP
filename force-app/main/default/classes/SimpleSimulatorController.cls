@@ -34,6 +34,13 @@ public class SimpleSimulatorController {
 
         Map<String, Schema.SObjectField> objectFields = ((sObject)Type.forName(objectName).newInstance()).getSObjectType().getDescribe().fields.getMap();
 
+        Set<String> memberFilter = new Set<String>();
+        for (SObjectField fieldToken : objectFields.values()) {
+            if(fieldToken.getDescribe().getType().name().toLowerCase() == 'reference' && fieldToken.getDescribe().getReferenceTo().get(0).getDescribe().getName() == 'FieloPLT__Member__c') {
+                memberFilter.add(fieldToken.getDescribe().getName() + ' = :memberId');
+            }
+        }
+
         String fieldType;
         Map<String,Object> col;
         Schema.DescribeFieldResult fieldDescribe;
@@ -122,12 +129,13 @@ public class SimpleSimulatorController {
 
         return (Object) new Map<String, Object>{
             'columns' => (Object) columns,
-            'records' => (Object) Database.query('SELECT ' + String.join(new List<String>(fields), ', ') + ' FROM ' + objectName + ' WHERE FieloPLT__Member__c = :memberId LIMIT 10')
+            'records' => (Object) Database.query('SELECT ' + String.join(new List<String>(fields), ', ') + ' FROM ' + objectName + ' WHERE ' + String.join(new List<String>(memberFilter), ' OR ') + ' LIMIT 10')
         };
     }
 
     @AuraEnabled
-    public static String simulate(String memberId, List<SObject> records){
-        return JSON.serializePretty(FieloPLT.SimulationAPI.simulateRewarding(records, Id.valueOf(memberId), false), true);
+    public static Object simulate(String memberId, List<SObject> records){
+        Map<Id, FieloPLT.SimulationResponse.PointType> currencyMap = FieloPLT.SimulationAPI.simulateRewarding(records, Id.valueOf(memberId), false);
+        return (Object) currencyMap;
     }
 }

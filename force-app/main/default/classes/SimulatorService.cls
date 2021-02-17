@@ -65,20 +65,6 @@ public class SimulatorService {
         for(Schema.ChildRelationship thisChild : describeResult.getChildRelationships()){
             if(thisChild.getRelationshipName() != null){
                 String relatedObject = String.valueOf(thisChild.getChildSObject());
-                    if( objectName == 'FieloPLT__Member__c' && relatedObject == 'FieloPLT__LevelMember__c'){
-                        labels.add( 'Rank Member' );
-                    }
-                    if( objectName == 'FieloPLT__Member__c' && relatedObject == 'FieloPLT__Member__c' && String.valueOf(thisChild.getField()) == 'FieloPLT__OrganizationAccount__c'){
-                        if(context != 'Behavior'){
-                            labels.add('Contributor');
-                            childRelationshipsMap.put('Contributor', thisChild);
-                            continue; //Avoid put the member label in the map below
-                        }
-                    }else if(objectName == 'FieloPLT__Member__c' && relatedObject == 'FieloPLT__Member__c' && String.valueOf(thisChild.getField()) == 'FieloPLT__MergedTo__c'){
-                        //Do nothing, because a Merged or Pending Merge member can't be part of a Segment or be evaluated for the rule engine. So there is no sense to have this option
-                        continue;
-                    }
-
                 String lab = ((sObject)Type.forName(relatedObject).newInstance()).getSObjectType().getDescribe().getLabel();
                 if(!labelsMap.containsKey(lab)){
                     labelsMap.put(lab,true);
@@ -91,16 +77,10 @@ public class SimulatorService {
         labels.sort();
         for(String s : labels){
             Map<String,String> aux = new Map<String,String>();
-            if( s == 'Rank Member' ){
+            if(childRelationshipsMap.get(s).getRelationshipName() != null){
                 aux.put('label', s);
-                aux.put('name', 'FieloPLT__RankMember__c');
-                aux.put('relationshipName', 'FieloPLT__RankMembers__r');
-            } else {
-                if(childRelationshipsMap.get(s).getRelationshipName() != null){
-                    aux.put('label', s);
-                    aux.put('name', String.valueOf(childRelationshipsMap.get(s).getChildSObject()));
-                    aux.put('relationshipName', String.valueOf(childRelationshipsMap.get(s).getRelationshipName()));
-                }
+                aux.put('name', String.valueOf(childRelationshipsMap.get(s).getChildSObject()));
+                aux.put('relationshipName', String.valueOf(childRelationshipsMap.get(s).getRelationshipName()));
             }
             lista.add( aux );
         }
@@ -116,12 +96,6 @@ public class SimulatorService {
         List<String> fieldset = new List<String>();
 
         List<String> listFields = fields != null ? fields.deleteWhitespace().split(',') : new List<String>();
-        for( Integer i = 0; i < listFields.size(); i++ ){
-            if ( listFields.get(i) == 'RecordType') {
-                listFields.remove(i);
-                listFields.add('RecordTypeId');
-            }
-        }
 
         Map<String,Schema.SObjectField> fieldMap = objectDescribe.fields.getMap();
         for(String fieldName: listFields){
@@ -145,9 +119,12 @@ public class SimulatorService {
 
     public static List<SObject> queryPickListRecords(List<String> fieldset, String fields, String objectName, String dataFilters, String orderBy, String recordsPerPage, String offset) {
         List<SObject> result = new List<SObject>();
-        String query = 'SELECT Id ';
+
+        if (!fieldset.contains('id')&&!fieldset.contains('Id')) fieldset.add('Id');
+
+        String query = 'SELECT ';
         if (fields != '') {
-            query += ', ' + String.join(fieldset, ',');
+            query += String.join(fieldset, ',');
         }
         query += ' FROM ' + objectName;
         query += getWhereCondition(dataFilters, objectName);
