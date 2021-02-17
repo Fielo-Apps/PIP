@@ -124,6 +124,7 @@ public class SimpleSimulatorController {
         }
 
         fields.addAll(fieldsToAdd);
+        fields.addAll(fieldsByObject.get(objectName));
 
         fields = SimulatorService.deleteDuplicateFields(fields);
 

@@ -1,4 +1,4 @@
-public class SimulatorService {
+public without sharing class SimulatorService {
     public static Map<String,Set<String>> getFieldsMap(List<CriteriaWrapper> criterias){
         Map<String,Set<String>> fieldsMap = new Map<String,Set<String>>();
         for(CriteriaWrapper cw : criterias){
