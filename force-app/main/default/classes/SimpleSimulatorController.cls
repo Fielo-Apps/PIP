@@ -135,8 +135,7 @@ public class SimpleSimulatorController {
     }
 
     @AuraEnabled
-    public static Object simulate(String memberId, List<SObject> records){
-        Map<Id, FieloPLT.SimulationResponse.PointType> currencyMap = FieloPLT.SimulationAPI.simulateRewarding(records, Id.valueOf(memberId), false);
-        return (Object) currencyMap;
+    public static String simulate(String memberId, List<SObject> records){
+        return JSON.serializePretty(FieloPLT.SimulationAPI.simulateRewarding(records, Id.valueOf(memberId), false));
     }
 }

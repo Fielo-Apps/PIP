@@ -100,7 +100,7 @@ export default class BSimpleSimulator extends LightningElement {
         records: this.selectedIds
       })
       .then(output => {
-        this.output = JSON.stringify(output, null, 2);
+        this.output = output;
       })
       .catch(error => {
         console.error(error);
