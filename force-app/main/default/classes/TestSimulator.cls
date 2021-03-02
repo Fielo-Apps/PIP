@@ -335,6 +335,52 @@ public class TestSimulator {
         );
     }
 
+    @isTest
+    static void testGetPrograms() {
+        FieloPLT__Program__c program = new FieloPLT__Program__c(
+            Name = 'Program',
+            FieloPLT__OnlineTransactionProcessing__c = true,
+            FieloPLT__EnableIncentivesCalculator__c = true
+        );
+
+        insert program;
+
+        List<FieloPLT__Program__c> programs = (List<FieloPLT__Program__c>) SimpleSimulatorController.getPrograms();
+    }
+
+    @isTest
+    static void testTranslate() {
+        FieloPLT__Program__c program = new FieloPLT__Program__c(
+            Name = 'Program',
+            FieloPLT__OnlineTransactionProcessing__c = true,
+            FieloPLT__EnableIncentivesCalculator__c = true
+        );
+
+        insert program;
+
+        FieloPLT__ProgramPointType__c ppt = [SELECT FieloPLT__PointType__c FROM FieloPLT__ProgramPointType__c];
+
+        List<FieloPLT__Segment__c> segments = new List<FieloPLT__Segment__c>{
+            new FieloPLT__Segment__c(
+                Name = 'Segment',
+                RecordTypeId = Schema.SObjectType.FieloPLT__Segment__c.getRecordTypeInfosByName().get('Dynamic').getRecordTypeId(),
+                FieloPLT__Program__c = program.Id,
+                FieloPLT__LogicalExpression__c = 'ALL',
+                FieloPLT__ExternalId__c = guid(),
+                FieloPLT__isActive__c = true
+            )
+        };
+        insert segments;
+
+        List<Id> idsToTranslate = new List<Id>();
+
+        idsToTranslate.add(program.Id);
+        idsToTranslate.add(ppt.FieloPLT__PointType__c);
+        idsToTranslate.add(segments.get(0).Id);
+
+        Map<String, String> translatedIds = (Map<String, String>) SimpleSimulatorController.translateIds(idsToTranslate);
+    }
+
     public static string guid() {
         String h = EncodingUtil.ConvertTohex(Crypto.GenerateAESKey(128));
         String guid = h.SubString(0,8)+ '-' + h.SubString(8,12) + '-' + h.SubString(12,16) + '-' + h.SubString(16,20) + '-' + h.substring(20);
