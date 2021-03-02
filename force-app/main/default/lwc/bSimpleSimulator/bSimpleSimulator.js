@@ -1,6 +1,8 @@
 import { LightningElement, wire, api, track } from 'lwc';
 import getRelatedLists from '@salesforce/apex/SimulatorService.getRelatedLists';
+import getPrograms from '@salesforce/apex/SimpleSimulatorController.getPrograms';
 import getRecords from '@salesforce/apex/SimpleSimulatorController.getRecords';
+import translateIds from '@salesforce/apex/SimpleSimulatorController.translateIds';
 import simulate from '@salesforce/apex/SimpleSimulatorController.simulate';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 
@@ -8,19 +10,54 @@ export default class BSimpleSimulator extends LightningElement {
 
     @track member;
     @track memberName;
+    @track program;
+    @track programs;
+    @track programName;
     @track objectOptions = [];
+    @track hasPrograms = false;
+    @track hasProgram = false;
     @track hasObjects = false;
     @track hasRecords = false;
     @track hasSelectedRecords = false;
     @track objectValue;
     @track output = '';
+    @track filters = '';
 
     @track relatedRecords = [];
     @track relatedColumns = [];
     @track selectedIds;
 
-    handleLookupChange(e) {
-        let lookupLwc = this.template.querySelector('c-b-lookup-field');
+    @track translate = false;
+    @track showOutput = false;
+
+    connectedCallback() {
+      getPrograms()
+      .then(result => {
+        this.programs = [];
+        result.forEach(function(record) {
+          this.programs.push({
+            label: record.Name,
+            value: record.Id
+          });
+        }.bind(this))
+
+        this.hasPrograms = this.programs && this.programs.length;
+      })
+      .catch(error => {
+        console.error(error);
+      })
+    }
+
+    handleProgramChange(e) {
+        let lookupLwc = this.template.querySelector('.fielo-field__program');
+        this.program = lookupLwc.value;
+        this.programName = lookupLwc.selectedName;
+        this.hasProgram = true;
+        this.filters = JSON.stringify({FieloPLT__Program__c:this.program});
+    }
+
+    handleMemberChange(e) {
+        let lookupLwc = this.template.querySelector('.fielo-field__member');
         this.member = lookupLwc.value;
         this.memberName = lookupLwc.selectedName;
         this.getRelated();
@@ -100,12 +137,52 @@ export default class BSimpleSimulator extends LightningElement {
         records: this.selectedIds
       })
       .then(output => {
-        this.output = output;
+        this.translate = this.template.querySelector('.fielo-translate-field').checked;
+
+        console.log(`this.translate: ${this.translate}`);
+        if (!this.translate) {
+          this.output = output;
+          this.showOutput = true;
+        } else {
+          var idsToTranslate = [];
+          var outputObj = JSON.parse(output);
+
+          Object.keys(outputObj).forEach(currencyId => {
+            idsToTranslate.push(currencyId);
+            Object.keys(outputObj[currencyId].records).forEach(recordId => {
+              idsToTranslate.push(recordId);
+              Object.keys(outputObj[currencyId].records[recordId].incentives).forEach(incentiveId => {
+                idsToTranslate.push(incentiveId);
+              })
+            })
+          })
+
+          var outputStr = output;
+
+          translateIds({idsToTranslate: idsToTranslate})
+          .then(translationMap => {
+            Object.keys(translationMap).forEach(fObjectId => {
+              outputStr = outputStr.replaceAll(fObjectId, translationMap[fObjectId]);
+            });
+            this.output = outputStr;
+            this.showOutput = true;
+          })
+          .catch(error => {
+            console.error(error);
+            const errorEvent = new ShowToastEvent({
+              title: 'Translation Error',
+              message: error && error.body && error.body.message || JSON.stringify(error),
+              variant: 'error',
+              mode: 'dismissable'
+            });
+            this.dispatchEvent(errorEvent);
+          })
+        }
       })
       .catch(error => {
         console.error(error);
         const errorEvent = new ShowToastEvent({
-          title: 'Error',
+          title: 'Simulation Error',
           message: error && error.body && error.body.message || JSON.stringify(error),
           variant: 'error',
           mode: 'dismissable'
