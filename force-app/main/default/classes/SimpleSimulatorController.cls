@@ -1,6 +1,13 @@
 public class SimpleSimulatorController {
 
     @AuraEnabled
+    public static Object getPrograms(){
+        List<FieloPLT__Program__c> programs = [SELECT Id, Name FROM FieloPLT__Program__c];
+
+        return (Object) programs;
+    }
+
+    @AuraEnabled
     public static Object getRecords(String memberId, String objectName){
 
         List<FieloPLT__Action__c> actions = (List<FieloPLT__Action__c>) Database.query(
@@ -137,5 +144,63 @@ public class SimpleSimulatorController {
     @AuraEnabled
     public static String simulate(String memberId, List<SObject> records){
         return JSON.serializePretty(FieloPLT.SimulationAPI.simulateRewarding(records, Id.valueOf(memberId), false));
+    }
+
+    @AuraEnabled
+    public static Object translateIds(List<String> idsToTranslate){
+        try {
+            Map<String, Map<String, Set<Id>>> idsByObject = new Map<String, Map<String, Set<Id>>>();
+            Map<SObjectType, Map<String, String>> objectInfoMap = new Map<SObjectType, Map<String, String>>();
+
+            for (String singleId : idsToTranslate) {
+                SObjectType objectToken = Id.valueOf(singleId).getSobjectType();
+
+                Map<String, String> objectInfo = objectInfoMap.get(objectToken);
+
+                if (objectInfo == null) {
+                    Schema.DescribeSObjectResult objDescribe = Id.valueOf(singleId).getSobjectType().getDescribe();
+                    String objectName = objDescribe.getName();
+
+                    String nameField;
+                    for (SObjectField fieldToken : objDescribe.fields.getMap().values()) {
+                        if (fieldToken.getDescribe().isNameField()) {
+                            nameField = fieldToken.getDescribe().getName();
+                        }
+                    }
+
+                    objectInfo = new Map<String,String>{
+                        'objectName' => objectName,
+                        'nameField' => nameField
+                    };
+
+                    objectInfoMap.put(objectToken, objectInfo);
+                }
+
+                if (idsByObject?.get(objectInfo.get('objectName'))?.get(objectInfo.get('nameField')) != null) {
+                    idsByObject.get(objectInfo.get('objectName')).get(objectInfo.get('nameField')).add(Id.valueOf(singleId));
+                } else {
+                    idsByObject.put(objectInfo.get('objectName'), new Map<String, Set<Id>>{
+                        objectInfo.get('nameField') => new Set<Id>{Id.valueOf(singleId)}
+                    });
+                }
+            }
+
+            Map<String, String> translatedIds = new Map<String, String>();
+
+
+            for (String objectName : idsByObject.keySet()) {
+                String nameField = new List<String>(idsByObject.get(objectName).keySet())[0];
+
+                Set<Id> idsToQuery = idsByObject.get(objectName).get(nameField);
+
+                for(SObject record : Database.query('SELECT Id, ' + nameField + ' FROM ' + objectName + ' WHERE Id in : idsToQuery')){
+                    translatedIds.put(String.valueOf(record.Id), String.valueOf(record.get(nameField)));
+                }
+            }
+
+            return (Object) translatedIds;
+        } catch (Exception e) {
+            throw new AuraHandledException(e.getMessage());
+        }
     }
 }
