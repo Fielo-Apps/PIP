@@ -4,7 +4,7 @@ import getRecords from '@salesforce/apex/SimpleSimulatorController.getRecords';
 import translateIds from '@salesforce/apex/SimpleSimulatorController.translateIds';
 import simulate from '@salesforce/apex/SimpleSimulatorController.simulate';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
-import { registerListener, unregisterAllListeners, fireEvent } from 'c/pubsub';
+import { registerListener, fireEvent } from 'c/pubsub';
 import { CurrentPageReference } from 'lightning/navigation';
 
 export default class CcSimpleSimulator extends LightningElement {
@@ -38,7 +38,7 @@ export default class CcSimpleSimulator extends LightningElement {
 
     console.log('subscribed to memberChange evt');
 
-    if (this.member != null && this.member.id === '') {
+    if (this.member.id === '') {
       // be sure to show the spinner
       fireEvent(this.pageRef, 'getMember', '');
     }
