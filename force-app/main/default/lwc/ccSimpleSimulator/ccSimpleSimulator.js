@@ -7,9 +7,11 @@ import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { registerListener, unregisterAllListeners, fireEvent } from 'c/pubsub';
 import { CurrentPageReference } from 'lightning/navigation';
 
-export default class BSimpleSimulator extends LightningElement {
+export default class CcSimpleSimulator extends LightningElement {
 
-  @track member;
+  @track member = {
+    id: ''
+  };
   @track program;
   @track programs;
   @track programName;
@@ -32,14 +34,13 @@ export default class BSimpleSimulator extends LightningElement {
 
   connectedCallback() {
     // subscribe to memberChange event
-    registerListener('fieloplt:memberChange', this.handleMemberChange, this);
+    registerListener('memberChange', this.handleMemberChange, this);
 
     console.log('subscribed to memberChange evt');
 
     if (this.member != null && this.member.id === '') {
       // be sure to show the spinner
-      this.loaded = false;
-      fireEvent(this.pageRef, 'fieloplt:getMember', '');
+      fireEvent(this.pageRef, 'getMember', '');
     }
   }
 
