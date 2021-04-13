@@ -15,6 +15,7 @@ export default class CcSimpleSimulator extends LightningElement {
   @track hasRecords = false;
   @track hasSelectedRecords = false;
   @track hasOutput = false;
+  @track hasSummary = false;
   @track objectValue;
   @track output = '';
   @track filters = '';
@@ -24,7 +25,7 @@ export default class CcSimpleSimulator extends LightningElement {
   @track outputColumns = [];
   @track selectedIds;
 
-  @track currencySummary = {};
+  @track currencySummary;
 
   @track rows;
 
@@ -166,12 +167,14 @@ export default class CcSimpleSimulator extends LightningElement {
 
   jsonToTable(result) {
     this.rows = [];
+    this.currencySummary = [];
     Object.keys(result).forEach(curr => {
       let records = result[curr].records;
-      this.currencySummary[curr] = {
+      this.currencySummary.push({
+        name: curr,
         amount: result[curr].amount,
         maximum: result[curr].maximum
-      };
+      });
       Object.keys(records).forEach(record => {
         let incentives = records[record].incentives;
         Object.keys(incentives).forEach(inc => {
@@ -193,8 +196,20 @@ export default class CcSimpleSimulator extends LightningElement {
       });
     });
 
-    console.log(`currency summary: ${JSON.stringify(this.currencySummary, null, 2)}`);
-
+    this.hasSummary = Boolean(this.currencySummary && this.currencySummary.length);
     this.hasOutput = Boolean(this.rows && this.rows.length);
+
+    var records = this.template.querySelector(".fielo-records-to-simulate");
+    records.classList.add('slds-hide');
+    var output = this.template.querySelector(".fielo-simulation-result");
+    output.classList.remove('slds-hide');
+  }
+
+  handleSelectRecords() {
+    var records = this.template.querySelector(".fielo-records-to-simulate");
+    records.classList.remove('slds-hide');
+
+    var output = this.template.querySelector(".fielo-simulation-result");
+    output.classList.add('slds-hide');
   }
 }

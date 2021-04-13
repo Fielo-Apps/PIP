@@ -7,25 +7,38 @@
             </div>
         </lightning-layout-item>
         <lightning-layout-item size="5" class="slds-p-horizontal_medium slds-p-top_small">
-            <lightning-card ></lightning-card>
+            <template if:true={hasOutput}>
+                <lightning-card >
+                    <lightning-layout class="slds-p-around_x-medium" horizontal-align="spread">
+                        <template for:each={currencySummary} for:item="currency" for:index="index">
+                            <lightning-layout-item key={currency.name} size="3" class="slds-p-horizontal_medium slds-p-top_small">
+                                {currency.name}: <br/>
+                                Eligible: {currency.amount} <br/>
+                                Maximum: {currency.maximum} <br/>
+                            </lightning-layout-item>
+                        </template>
+                    </lightning-layout>
+                </lightning-card>
+            </template>
         </lightning-layout-item>
     </lightning-layout>
         <template if:true={hasRecords}>
-            <div class="slds-var-m-around_medium">
+            <template if:true={hasSelectedRecords}>
+                <div class="slds-var-m-around_medium">
+                    <lightning-button variant="success" label="Update outcomes" title="Successful action"
+                        onclick={handleSimulate} class="slds-m-left_x-small"></lightning-button>
+                    <lightning-button variant="success" label="Select Opportunities" title="Successful action"
+                        onclick={handleSelectRecords} class="slds-m-left_x-small"></lightning-button>
+                </div>
+            </template>
+            <div class="slds-var-m-around_medium fielo-records-to-simulate">
                 <lightning-datatable data={relatedRecords} columns={relatedColumns} key-field="Id"
                     onrowselection={handleSelectedRecord}></lightning-datatable>
             </div>
-
-            <template if:true={hasSelectedRecords}>
-                <div class="slds-var-m-around_medium">
-                    <lightning-button variant="success" label="Select Opportunities" title="Successful action"
-                        onclick={handleSimulate} class="slds-m-left_x-small"></lightning-button>
-                </div>
-            </template>
         </template>
 
         <template if:true={hasOutput}>
-            <div class="slds-var-m-around_medium">
+            <div class="slds-var-m-around_medium fielo-simulation-result">
                 <lightning-datatable data={rows} columns={outputColumns} key-field="Id"></lightning-datatable>
             </div>
         </template>
