@@ -140,7 +140,7 @@ public class SimpleSimulatorController {
 
         return (Object) new Map<String, Object>{
             'columns' => (Object) columns,
-            'records' => (Object) Database.query('SELECT ' + String.join(new List<String>(fields), ', ') + ' FROM ' + objectName + ' WHERE ' + String.join(new List<String>(memberFilter), ' OR ') + ' LIMIT 10')
+            'records' => (Object) Database.query('SELECT ' + String.join(new List<String>(fields), ', ') + ' FROM ' + objectName + ' WHERE ' + String.join(new List<String>(memberFilter), ' OR ') + ' ORDER BY LastModifiedDate DESC LIMIT 10')
         };
     }
 
@@ -202,6 +202,67 @@ public class SimpleSimulatorController {
             }
 
             return (Object) translatedIds;
+        } catch (Exception e) {
+            throw new AuraHandledException(e.getMessage());
+        }
+    }
+
+    @AuraEnabled
+    public static Object getConfiguration(String memberId){
+        try {
+            Map<String, Object> fieloConfig = new Map<String, Object>();
+
+            FieloPLT__Member__c member = [SELECT Id, FieloPLT__Program__c FROM FieloPLT__Member__c WHERE Id = :memberId];
+
+            Map<String,Object> currencies = new Map<String,Object>();
+            for(FieloPLT__ProgramPointType__c ppt : [SELECT Id, FieloPLT__PointType__r.Name, FieloPLT__PointType__r.FieloPLT__DecimalsNumber__c FROM FieloPLT__ProgramPointType__c WHERE FieloPLT__Program__c = :member.FieloPLT__Program__c]) {
+                currencies.put(ppt.FieloPLT__PointType__r.Name, (Object) ppt.FieloPLT__PointType__r.FieloPLT__DecimalsNumber__c);
+            }
+            fieloConfig.put('currencies', (Object) currencies);
+
+            List<Map<String,Object>> columns = new List<Map<String,Object>>{
+                new Map<String, Object> {
+                    'name' =>       (object) 'incentive',
+                    'fieldName' =>  (object) 'incentive',
+                    'type' =>       (object) 'text',
+                    'label' =>      (object) 'Incentive',
+                    'wrapText' =>   (object) true
+                },
+                new Map<String, Object> {
+                    'name' =>       (object) 'status',
+                    'fieldName' =>  (object) 'status',
+                    'type' =>       (object) 'text',
+                    'label' =>      (object) 'Status'
+                },
+                new Map<String, Object> {
+                    'name' =>       (object) 'record',
+                    'fieldName' =>  (object) 'record',
+                    'type' =>       (object) 'text',
+                    'label' =>      (object) 'Record',
+                    'wrapText' =>   (object) true
+                }
+            };
+
+            for (String name : currencies.keySet()) {
+                columns.add(
+                    new Map<String, Object> {
+                        'name' =>           (object) name,
+                        'fieldName' =>      (object) name,
+                        'type' =>           (object) 'number',
+                        'label' =>          (object) name,
+                        'typeAttributes' => (object) new Map<String, String>{
+                                                'minimumFractionDigits' => String.valueOf(currencies.get(name))
+                                            },
+                        'cellAttributes' => (object) new Map<String, String>{
+                                                'alignment' => 'left'
+                                            }
+                    }
+                );
+            }
+
+            fieloConfig.put('columns', columns);
+
+            return fieloConfig;
         } catch (Exception e) {
             throw new AuraHandledException(e.getMessage());
         }

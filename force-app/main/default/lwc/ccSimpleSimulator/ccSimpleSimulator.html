@@ -18,10 +18,6 @@
 
             <template if:true={hasSelectedRecords}>
                 <div class="slds-var-m-around_medium">
-                    <lightning-input type="checkbox" class="fielo-translate-field"
-                        label="Translate Simulation Output"></lightning-input>
-                </div>
-                <div class="slds-var-m-around_medium">
                     <lightning-button variant="success" label="Simulate" title="Successful action"
                         onclick={handleSimulate} class="slds-m-left_x-small"></lightning-button>
                 </div>
@@ -32,6 +28,12 @@
                     {output}
                 </div>
             </template>
+        </template>
+
+        <template if:true={hasOutput}>
+            <div class="slds-var-m-around_medium">
+                <lightning-datatable data={rows} columns={outputColumns} key-field="Id"></lightning-datatable>
+            </div>
         </template>
 
 </template>
