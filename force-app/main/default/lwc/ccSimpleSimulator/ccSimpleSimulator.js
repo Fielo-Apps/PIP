@@ -4,6 +4,7 @@ import translateIds from '@salesforce/apex/SimpleSimulatorController.translateId
 import simulate from '@salesforce/apex/SimpleSimulatorController.simulate';
 import getConfiguration from '@salesforce/apex/SimpleSimulatorController.getConfiguration';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import SystemModstamp from '@salesforce/schema/Account.SystemModstamp';
 
 export default class CcSimpleSimulator extends LightningElement {
 
@@ -22,6 +23,8 @@ export default class CcSimpleSimulator extends LightningElement {
   @track relatedColumns = [];
   @track outputColumns = [];
   @track selectedIds;
+
+  @track currencySummary = {};
 
   @track rows;
 
@@ -165,6 +168,10 @@ export default class CcSimpleSimulator extends LightningElement {
     this.rows = [];
     Object.keys(result).forEach(curr => {
       let records = result[curr].records;
+      this.currencySummary[curr] = {
+        amount: result[curr].amount,
+        maximum: result[curr].maximum
+      };
       Object.keys(records).forEach(record => {
         let incentives = records[record].incentives;
         Object.keys(incentives).forEach(inc => {
@@ -185,6 +192,8 @@ export default class CcSimpleSimulator extends LightningElement {
         });
       });
     });
+
+    console.log(`currency summary: ${JSON.stringify(this.currencySummary, null, 2)}`);
 
     this.hasOutput = Boolean(this.rows && this.rows.length);
   }
