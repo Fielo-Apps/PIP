@@ -33,6 +33,8 @@ export default class CcSimpleSimulator extends LightningElement {
   @track isSummaryOutput = false;
 
   @track rows;
+  @track summaryRows;
+  @track expandedRows;
 
   @track showOutput = false;
 
@@ -152,7 +154,7 @@ export default class CcSimpleSimulator extends LightningElement {
     console.error(error);
     const errorEvent = new ShowToastEvent({
         title: 'Error',
-        message: error && error.body && error.body.message || JSON.stringify(error),
+        message: JSON.stringify(error),
         variant: 'error',
         mode: 'dismissable'
       });
@@ -161,8 +163,11 @@ export default class CcSimpleSimulator extends LightningElement {
 
   jsonToTable(result) {
     this.rows = [];
+    this.expandedRows = [];
     this.summaryMap = {};
     this.currencySummary = [];
+    var num = 0;
+    var summaryNum = 0;
     Object.keys(result).forEach(curr => {
       let records = result[curr].records;
       this.currencySummary.push({
@@ -177,6 +182,7 @@ export default class CcSimpleSimulator extends LightningElement {
           rewardings.forEach(rew => {
             // Format the way we want:
             let row = {
+              id: ++num,
               incentive: inc,
               status: rew.eligible ? 'Eligible' : 'Potential',
               record: record
@@ -187,18 +193,26 @@ export default class CcSimpleSimulator extends LightningElement {
             );
             this.rows.push(row);
 
-            if (Boolean(this.summaryMap[row.incentive])) {
-              if (!Boolean(this.summaryMap[row.incentive]._children))
-                this.summaryMap[row.incentive]._children = [];
-              this.summaryMap[row.incentive]._children.push(Object.assign({},row));
-            } else {
-              this.summaryMap[row.incentive] = Object.assign({},row);
+            if (!Boolean(this.summaryMap[row.incentive])) {
+              this.summaryMap[row.incentive] = {
+                incentive: inc,
+                id: ++summaryNum,
+              };
+              this.expandedRows.push(this.summaryMap[row.incentive].id);
+              this.summaryMap[row.incentive]._children = [];
+              if (!this.summaryMap[row.incentive][curr])
+                this.summaryMap[row.incentive][curr] = 0;
             }
+            let newRow = Object.assign({},row);
+            delete newRow.incentive;
+            newRow.id = ++summaryNum;
+            this.summaryMap[row.incentive]._children.push(newRow);
+            this.summaryMap[row.incentive][curr] += row[curr];
           });
         });
       });
     });
-
+    this.summaryRows = Object.values(this.summaryMap);
     this.hasSummary = Boolean(this.currencySummary && this.currencySummary.length);
     this.hasOutput = Boolean(this.rows && this.rows.length);
 
@@ -215,7 +229,8 @@ export default class CcSimpleSimulator extends LightningElement {
 
     this.showSimulateButton = false;
     this.showSelectRecordsButton = true;
-    this.toggleTable();
+
+    this.handleSummaryClick();
   }
 
   handleSelectRecords() {
@@ -239,28 +254,5 @@ export default class CcSimpleSimulator extends LightningElement {
   handleTableClick() {
     this.isTableOutput = true;
     this.isSummaryOutput = false;
-  }
-
-  outputTableElement;
-  outputSummaryElement;
-
-  initOutputs() {
-    if (!Boolean(this.outputTableElement))
-      this.outputTableElement = this.template.querySelector(".fielo-output-as-table");
-
-    if (!Boolean(this.outputSummaryElement))
-      this.outputSummaryElement = this.template.querySelector(".fielo-output-as-summary");
-  }
-
-  toggleTable() {
-    this.initOutputs();
-    this.outputTableElement.classList.remove('slds-hide');
-    this.outputSummaryElement.classList.add('slds-hide');
-  }
-
-  toggleSummary() {
-    this.initOutputs();
-    this.outputTableElement.classList.add('slds-hide');
-    this.outputSummaryElement.classList.remove('slds-hide');
   }
 }

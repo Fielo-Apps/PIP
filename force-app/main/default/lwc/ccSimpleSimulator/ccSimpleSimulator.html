@@ -50,9 +50,12 @@
                     </lightning-layout-item>
                 </lightning-layout>
 
-                <lightning-datatable class="fielo-output-as-table" data={rows} columns={outputColumns} key-field="Id"></lightning-datatable>
-
-                <lightning-tree-grid class="fielo-output-as-summary" columns={outputColumns} data={summaryRows} expanded-rows={expandedRows} key-field="name"></lightning-tree-grid>
+                <template if:true={isTableOutput}>
+                    <lightning-datatable class="fielo-output-as-table" data={rows} columns={outputColumns} key-field="Id"></lightning-datatable>
+                </template>
+                <template if:true={isSummaryOutput}>
+                    <lightning-tree-grid class="fielo-output-as-summary" columns={outputColumns} data={summaryRows} expanded-rows={expandedRows} key-field="id"></lightning-tree-grid>
+                </template>
             </div>
         </template>
 
