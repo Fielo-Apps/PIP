@@ -5,16 +5,32 @@
             <div class="slds-text-heading_large">
                 <b>Incentives Calculator</b>
             </div>
+            <div class="slds-text-heading_small">
+                Incentives Calculator is based on revenue objectives.<br/>
+                By default all objectives are selected. You can unselect and recalculate your payout.
+            </div>
         </lightning-layout-item>
         <lightning-layout-item size="5" class="slds-p-horizontal_medium slds-p-top_small">
             <template if:true={hasOutput}>
-                <lightning-card >
-                    <lightning-layout class="slds-p-around_x-medium" horizontal-align="spread">
+                <lightning-card class="fielo-output-summary">
+                    <lightning-layout class="slds-p-around_x-medium" horizontal-align="spread" vertical-align="start">
                         <template for:each={currencySummary} for:item="currency" for:index="index">
-                            <lightning-layout-item key={currency.name} size="3" class="slds-p-horizontal_medium slds-p-top_small">
-                                {currency.name}: <br/>
-                                Eligible: {currency.amount} <br/>
-                                Maximum: {currency.maximum} <br/>
+                            <lightning-layout-item key={currency.name} size="6" class="slds-p-horizontal_medium">
+                                <div class="slds-text-title_caps slds-text-color_default slds-size_1-of-1"><b>{currency.name}</b></div>
+                                <div class="slds-text-color_default slds-size_1-of-1"><b>Remaining Potential</b></div>
+                                <div class="slds-text-heading_medium slds-size_1-of-1 slds-p-bottom_medium">
+                                    <lightning-formatted-number value={currency.remaining} format-style="currency" currency-code="USD"></lightning-formatted-number>
+                                </div>
+                                <lightning-progress-bar class="slds-progress-bar__value_success" value={currency.percent} size="small"></lightning-progress-bar>
+                                <lightning-layout class="slds-p-around_x-medium" horizontal-align="spread" vertical-align="start">
+                                    <lightning-layout-item>
+                                        <lightning-formatted-number value={currency.amount} format-style="currency" currency-code="USD"></lightning-formatted-number>
+                                        &nbsp;eligible
+                                    </lightning-layout-item>
+                                    <lightning-layout-item>
+                                        <lightning-formatted-number value={currency.maximum} format-style="currency" currency-code="USD"></lightning-formatted-number>
+                                    </lightning-layout-item>
+                                </lightning-layout>
                             </lightning-layout-item>
                         </template>
                     </lightning-layout>

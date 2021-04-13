@@ -173,7 +173,9 @@ export default class CcSimpleSimulator extends LightningElement {
       this.currencySummary.push({
         name: curr,
         amount: result[curr].amount,
-        maximum: result[curr].maximum
+        maximum: result[curr].maximum,
+        remaining: result[curr].maximum-result[curr].amount,
+        percent: (result[curr].amount/result[curr].maximum)*100
       });
       Object.keys(records).forEach(record => {
         let incentives = records[record].incentives;
