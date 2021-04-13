@@ -24,7 +24,13 @@ export default class CcSimpleSimulator extends LightningElement {
   @track outputColumns = [];
   @track selectedIds;
 
+  @track showSelectRecordsButton = false;
+  @track showSimulateButton = false;
+
   @track currencySummary;
+
+  @track isTableOutput = false;
+  @track isSummaryOutput = false;
 
   @track rows;
 
@@ -72,6 +78,7 @@ export default class CcSimpleSimulator extends LightningElement {
       }.bind(this))
 
       this.hasRecords = this.relatedRecords && this.relatedRecords.length;
+      this.showSimulateButton = this.hasRecords;
     })
     .catch(error => {
       console.error(error)
@@ -154,6 +161,7 @@ export default class CcSimpleSimulator extends LightningElement {
 
   jsonToTable(result) {
     this.rows = [];
+    this.summaryMap = {};
     this.currencySummary = [];
     Object.keys(result).forEach(curr => {
       let records = result[curr].records;
@@ -178,6 +186,14 @@ export default class CcSimpleSimulator extends LightningElement {
               JSON.stringify(row, null, 2)
             );
             this.rows.push(row);
+
+            if (Boolean(this.summaryMap[row.incentive])) {
+              if (!Boolean(this.summaryMap[row.incentive]._children))
+                this.summaryMap[row.incentive]._children = [];
+              this.summaryMap[row.incentive]._children.push(Object.assign({},row));
+            } else {
+              this.summaryMap[row.incentive] = Object.assign({},row);
+            }
           });
         });
       });
@@ -185,6 +201,8 @@ export default class CcSimpleSimulator extends LightningElement {
 
     this.hasSummary = Boolean(this.currencySummary && this.currencySummary.length);
     this.hasOutput = Boolean(this.rows && this.rows.length);
+
+    if (this.hasOutput) this._selectedStep = 'output';
 
     var records = this.template.querySelector(".fielo-records-to-simulate");
     if (records) {
@@ -194,6 +212,10 @@ export default class CcSimpleSimulator extends LightningElement {
     if (output) {
       output.classList.remove('slds-hide');
     }
+
+    this.showSimulateButton = false;
+    this.showSelectRecordsButton = true;
+    this.toggleTable();
   }
 
   handleSelectRecords() {
@@ -205,5 +227,40 @@ export default class CcSimpleSimulator extends LightningElement {
     if (output) {
       output.classList.add('slds-hide');
     }
+    this.showSelectRecordsButton = false;
+    this.showSimulateButton = true;
+  }
+
+  handleSummaryClick() {
+    this.isTableOutput = false;
+    this.isSummaryOutput = true;
+  }
+
+  handleTableClick() {
+    this.isTableOutput = true;
+    this.isSummaryOutput = false;
+  }
+
+  outputTableElement;
+  outputSummaryElement;
+
+  initOutputs() {
+    if (!Boolean(this.outputTableElement))
+      this.outputTableElement = this.template.querySelector(".fielo-output-as-table");
+
+    if (!Boolean(this.outputSummaryElement))
+      this.outputSummaryElement = this.template.querySelector(".fielo-output-as-summary");
+  }
+
+  toggleTable() {
+    this.initOutputs();
+    this.outputTableElement.classList.remove('slds-hide');
+    this.outputSummaryElement.classList.add('slds-hide');
+  }
+
+  toggleSummary() {
+    this.initOutputs();
+    this.outputTableElement.classList.add('slds-hide');
+    this.outputSummaryElement.classList.remove('slds-hide');
   }
 }

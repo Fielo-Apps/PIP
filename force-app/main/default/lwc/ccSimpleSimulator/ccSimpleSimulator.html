@@ -23,23 +23,36 @@
         </lightning-layout-item>
     </lightning-layout>
         <template if:true={hasRecords}>
-            <template if:true={hasSelectedRecords}>
-                <div class="slds-var-m-around_medium">
+            <div class="slds-var-m-around_medium">
+                <template if:true={hasSelectedRecords}>
+                    <template if:true={showSimulateButton}>
+                        <lightning-button variant="brand" label="Update outcomes" title="Successful action"
+                            onclick={handleSimulate} class="slds-m-left_x-small"></lightning-button>
+                    </template>
+                </template>
+                <template if:true={showSelectRecordsButton}>
                     <lightning-button variant="neutral" label="Select Opportunities" title="Successful action"
                         onclick={handleSelectRecords} class="slds-m-left_x-small"></lightning-button>
-                    <lightning-button variant="brand" label="Update outcomes" title="Successful action"
-                        onclick={handleSimulate} class="slds-m-left_x-small"></lightning-button>
-                </div>
-            </template>
-            <div class="slds-var-m-around_medium fielo-records-to-simulate">
+                </template>
+            </div>
+            <div class="slds-var-m-around_medium fielo-records-to-simulate" data-step={_selectedStep}>
                 <lightning-datatable data={relatedRecords} columns={relatedColumns} key-field="Id"
                     onrowselection={handleSelectedRecord}></lightning-datatable>
             </div>
         </template>
 
         <template if:true={hasOutput}>
-            <div class="slds-var-m-around_medium fielo-simulation-result">
-                <lightning-datatable data={rows} columns={outputColumns} key-field="Id"></lightning-datatable>
+            <div class="slds-var-m-around_medium fielo-simulation-result slds-size_1-of-1">
+                <lightning-layout class="slds-p-around_x-medium slds-size_1-of-1" horizontal-align="end">
+                    <lightning-layout-item size="1" class="slds-p-horizontal_medium slds-p-top_small slds-p-bottom_medium">
+                        <lightning-button-icon-stateful icon-name="utility:summary" selected={isSummaryOutput} onclick={handleSummaryClick} alternative-text="Like"></lightning-button-icon-stateful>
+                        <lightning-button-icon-stateful icon-name="utility:table" selected={isTableOutput} onclick={handleTableClick} alternative-text="Answer" class="slds-m-left_xx-small"></lightning-button-icon-stateful>
+                    </lightning-layout-item>
+                </lightning-layout>
+
+                <lightning-datatable class="fielo-output-as-table" data={rows} columns={outputColumns} key-field="Id"></lightning-datatable>
+
+                <lightning-tree-grid class="fielo-output-as-summary" columns={outputColumns} data={summaryRows} expanded-rows={expandedRows} key-field="name"></lightning-tree-grid>
             </div>
         </template>
 
