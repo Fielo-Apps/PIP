@@ -25,10 +25,10 @@
         <template if:true={hasRecords}>
             <template if:true={hasSelectedRecords}>
                 <div class="slds-var-m-around_medium">
-                    <lightning-button variant="success" label="Update outcomes" title="Successful action"
-                        onclick={handleSimulate} class="slds-m-left_x-small"></lightning-button>
-                    <lightning-button variant="success" label="Select Opportunities" title="Successful action"
+                    <lightning-button variant="neutral" label="Select Opportunities" title="Successful action"
                         onclick={handleSelectRecords} class="slds-m-left_x-small"></lightning-button>
+                    <lightning-button variant="brand" label="Update outcomes" title="Successful action"
+                        onclick={handleSimulate} class="slds-m-left_x-small"></lightning-button>
                 </div>
             </template>
             <div class="slds-var-m-around_medium fielo-records-to-simulate">

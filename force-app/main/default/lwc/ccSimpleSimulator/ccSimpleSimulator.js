@@ -4,7 +4,6 @@ import translateIds from '@salesforce/apex/SimpleSimulatorController.translateId
 import simulate from '@salesforce/apex/SimpleSimulatorController.simulate';
 import getConfiguration from '@salesforce/apex/SimpleSimulatorController.getConfiguration';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
-import SystemModstamp from '@salesforce/schema/Account.SystemModstamp';
 
 export default class CcSimpleSimulator extends LightningElement {
 
@@ -44,7 +43,6 @@ export default class CcSimpleSimulator extends LightningElement {
     if (this.member.id !== payload.member.Id) {
       this.member = payload.member;
       this.member.id = this.member.Id;
-      console.log(`member: " ${JSON.stringify(this.member, null, 2)}`);
       this.getRelatedRecords();
       this.getFieloConfiguration();
     }
@@ -74,10 +72,6 @@ export default class CcSimpleSimulator extends LightningElement {
       }.bind(this))
 
       this.hasRecords = this.relatedRecords && this.relatedRecords.length;
-
-      console.log(
-        JSON.stringify(this.relatedColumns, null, 2)
-      )
     })
     .catch(error => {
       console.error(error)
@@ -125,14 +119,7 @@ export default class CcSimpleSimulator extends LightningElement {
         this.jsonToTable(JSON.parse(this.output));
       })
       .catch(error => {
-        console.error(error);
-        const errorEvent = new ShowToastEvent({
-          title: 'Translation Error',
-          message: error && error.body && error.body.message || JSON.stringify(error),
-          variant: 'error',
-          mode: 'dismissable'
-        });
-        this.dispatchEvent(errorEvent);
+        this.handleError(console.error());
       })
     })
     .catch(error => {
@@ -157,7 +144,7 @@ export default class CcSimpleSimulator extends LightningElement {
   handleError(error) {
     console.error(error);
     const errorEvent = new ShowToastEvent({
-        title: 'Simulation Error',
+        title: 'Error',
         message: error && error.body && error.body.message || JSON.stringify(error),
         variant: 'error',
         mode: 'dismissable'
@@ -200,16 +187,23 @@ export default class CcSimpleSimulator extends LightningElement {
     this.hasOutput = Boolean(this.rows && this.rows.length);
 
     var records = this.template.querySelector(".fielo-records-to-simulate");
-    records.classList.add('slds-hide');
+    if (records) {
+      records.classList.add('slds-hide');
+    }
     var output = this.template.querySelector(".fielo-simulation-result");
-    output.classList.remove('slds-hide');
+    if (output) {
+      output.classList.remove('slds-hide');
+    }
   }
 
   handleSelectRecords() {
     var records = this.template.querySelector(".fielo-records-to-simulate");
-    records.classList.remove('slds-hide');
-
+    if (records) {
+      records.classList.remove('slds-hide');
+    }
     var output = this.template.querySelector(".fielo-simulation-result");
-    output.classList.add('slds-hide');
+    if (output) {
+      output.classList.add('slds-hide');
+    }
   }
 }
