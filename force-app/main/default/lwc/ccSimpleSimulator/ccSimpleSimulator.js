@@ -1,21 +1,14 @@
-import { LightningElement, track, wire } from 'lwc';
-import getRelatedLists from '@salesforce/apex/SimulatorService.getRelatedLists';
+import { LightningElement, track, api } from 'lwc';
 import getRecords from '@salesforce/apex/SimpleSimulatorController.getRecords';
 import translateIds from '@salesforce/apex/SimpleSimulatorController.translateIds';
 import simulate from '@salesforce/apex/SimpleSimulatorController.simulate';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
-import { registerListener, fireEvent } from 'c/pubsub';
-import { CurrentPageReference } from 'lightning/navigation';
 
 export default class CcSimpleSimulator extends LightningElement {
 
   @track member = {
     id: ''
   };
-  @track program;
-  @track programs;
-  @track programName;
-  @track objectOptions = [];
   @track hasMember = false;
   @track hasRecords = false;
   @track hasSelectedRecords = false;
@@ -30,34 +23,27 @@ export default class CcSimpleSimulator extends LightningElement {
   @track translate = false;
   @track showOutput = false;
 
-  @wire(CurrentPageReference) pageRef;
+  @api objectName;
 
   connectedCallback() {
-    // subscribe to memberChange event
-    registerListener('memberChange', this.handleMemberChange, this);
-
-    console.log('subscribed to memberChange evt');
-
-    if (this.member.id === '') {
-      // be sure to show the spinner
-      fireEvent(this.pageRef, 'getMember', '');
-    }
+    console.log(`objectName: ${this.objectName}`);
   }
 
+  @api
   handleMemberChange(payload) {
-    console.log('member changed');
     if (this.member.id !== payload.member.Id) {
       this.member = payload.member;
       this.member.id = this.member.Id;
-      console.log(`Selected member" ${this.member}`);
+      console.log(`member: " ${JSON.stringify(this.member, null, 2)}`);
+      this.getRelatedRecords();
     }
   }
 
 
   getRelatedRecords(){
     getRecords({
-      memberId: this.member,
-      objectName: this.objectValue
+      memberId: this.member.Id,
+      objectName: this.objectName
     })
     .then(result => {
       this.relatedRecords = [];
@@ -100,7 +86,7 @@ export default class CcSimpleSimulator extends LightningElement {
 
   handleSimulate() {
     simulate({
-      memberId: this.member,
+      memberId: this.member.Id,
       records: this.selectedIds
     })
     .then(output => {
@@ -110,6 +96,7 @@ export default class CcSimpleSimulator extends LightningElement {
       if (!this.translate) {
         this.output = output;
         this.showOutput = true;
+        this.jsonToTable(JSON.parse(this.output));
       } else {
         var idsToTranslate = [];
         var outputObj = JSON.parse(output);
@@ -133,6 +120,7 @@ export default class CcSimpleSimulator extends LightningElement {
           });
           this.output = outputStr;
           this.showOutput = true;
+          this.jsonToTable(JSON.parse(this.output));
         })
         .catch(error => {
           console.error(error);
@@ -156,5 +144,30 @@ export default class CcSimpleSimulator extends LightningElement {
       });
       this.dispatchEvent(errorEvent);
     })
+  }
+
+  jsonToTable(result) {
+    var rows = [];
+    Object.keys(result).forEach(curr => {
+      let records = result[curr].records;
+      Object.keys(records).forEach(record => {
+        let incentives = records[record].incentives;
+        Object.keys(incentives).forEach(inc => {
+          let rewardings = incentives[inc].rewardings;
+          rewardings.forEach(rew => {
+            // Format the way we want:
+            let row = {
+              incentive: inc,
+              status: rew.eligible ? 'Eligible' : 'Potential',
+              record: record
+            };
+            row[curr] = rew.eligible ? incentives[inc].amount : incentives[inc].potentialAmount;
+            console.log(
+              JSON.stringify(row, null, 2)
+            );
+          });
+        });
+      });
+    });
   }
 }

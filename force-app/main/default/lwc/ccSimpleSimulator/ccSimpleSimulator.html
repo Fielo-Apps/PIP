@@ -1,6 +1,15 @@
 <template>
-    <lightning-card title="Simple Simulator" icon-name="utility:matrix">
 
+    <lightning-layout class="slds-p-around_x-medium">
+        <lightning-layout-item size="7" class="slds-p-horizontal_medium slds-p-top_small">
+            <div class="slds-text-heading_large">
+                <b>Incentives Calculator</b>
+            </div>
+        </lightning-layout-item>
+        <lightning-layout-item size="5" class="slds-p-horizontal_medium slds-p-top_small">
+            <lightning-card ></lightning-card>
+        </lightning-layout-item>
+    </lightning-layout>
         <template if:true={hasRecords}>
             <div class="slds-var-m-around_medium">
                 <lightning-datatable data={relatedRecords} columns={relatedColumns} key-field="Id"
@@ -25,5 +34,4 @@
             </template>
         </template>
 
-    </lightning-card>
 </template>

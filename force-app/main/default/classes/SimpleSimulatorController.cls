@@ -21,13 +21,15 @@ public class SimpleSimulatorController {
         Map<String,Set<String>> fieldsByObject = new Map<String,Set<String>>();
         if (!actions.isEmpty()) {
             for(FieloPLT__Action__c action : actions) {
-                criteriasMetaDataMap = (Map<String,SimulatorService.CriteriaWrapper>)JSON.deserialize(action.FieloPLT__CriteriaFields__c, Map<String,SimulatorService.CriteriaWrapper>.class);
+                if (String.isNotBlank(action.FieloPLT__CriteriaFields__c)) {
+                    criteriasMetaDataMap = (Map<String,SimulatorService.CriteriaWrapper>)JSON.deserialize(action.FieloPLT__CriteriaFields__c, Map<String,SimulatorService.CriteriaWrapper>.class);
 
-                if(criteriasMetaDataMap.containsKey('rules'))
-                    criterias.add(criteriasMetaDataMap.get('rules'));
+                    if(criteriasMetaDataMap.containsKey('rules'))
+                        criterias.add(criteriasMetaDataMap.get('rules'));
 
-                if(criteriasMetaDataMap.containsKey('missions'))
-                    criterias.add(criteriasMetaDataMap.get('missions'));
+                    if(criteriasMetaDataMap.containsKey('missions'))
+                        criterias.add(criteriasMetaDataMap.get('missions'));
+                }
             }
 
             fieldsByObject = SimulatorService.getFieldsMap(criterias);
@@ -71,6 +73,7 @@ public class SimpleSimulatorController {
                 switch on fieldType {
                     when 'text' {
                         col.put('type', (Object) 'text');
+                        col.put('wrapText', (Object) true);
                     }
                     when 'percent' {
                         col.put('type', (Object) 'percent');
