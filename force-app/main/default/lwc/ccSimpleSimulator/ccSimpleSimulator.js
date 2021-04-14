@@ -4,6 +4,8 @@ import translateIds from '@salesforce/apex/SimpleSimulatorController.translateId
 import simulate from '@salesforce/apex/SimpleSimulatorController.simulate';
 import getConfiguration from '@salesforce/apex/SimpleSimulatorController.getConfiguration';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import { loadStyle } from "lightning/platformResourceLoader";
+import pipCss from '@salesforce/resourceUrl/pipCss';
 
 export default class CcSimpleSimulator extends LightningElement {
 
@@ -24,10 +26,9 @@ export default class CcSimpleSimulator extends LightningElement {
   @track outputColumns = [];
   @track selectedIds;
 
-  @track showSelectRecordsButton = false;
-  @track showSimulateButton = false;
-
   @track currencySummary;
+
+  @track currencySummaryItemSize;
 
   @track isTableOutput = false;
   @track isSummaryOutput = false;
@@ -36,14 +37,32 @@ export default class CcSimpleSimulator extends LightningElement {
   @track summaryRows;
   @track expandedRows;
 
+  @track showSpinner = false;
+
   @track showOutput = false;
+
+  @track filterLabels = {
+    from: "From",
+    to: "To"
+  };
+
+  @track label = {
+    selectRecords: 'Select records'
+  };
 
   config = {};
 
   @api objectName;
+  @api dateField = 'CreatedDate';
 
   connectedCallback() {
     console.log(`objectName: ${this.objectName}`);
+    console.log(`dateField: ${this.dateField}`);
+    this.showSpinner = true;
+
+    loadStyle(this, pipCss).catch((error) => {
+      console.warn(error);
+    });
   }
 
   @api
@@ -80,7 +99,8 @@ export default class CcSimpleSimulator extends LightningElement {
       }.bind(this))
 
       this.hasRecords = this.relatedRecords && this.relatedRecords.length;
-      this.showSimulateButton = this.hasRecords;
+
+      this.showSpinner = false;
     })
     .catch(error => {
       console.error(error)
@@ -95,9 +115,11 @@ export default class CcSimpleSimulator extends LightningElement {
     }.bind(this));
 
     this.hasSelectedRecords = this.selectedIds && this.selectedIds.length;
+    this.toggleSimulateButton(this.hasSelectedRecords);
   }
 
   handleSimulate() {
+    this.showSpinner = true;
     simulate({
       memberId: this.member.Id,
       records: this.selectedIds
@@ -124,8 +146,10 @@ export default class CcSimpleSimulator extends LightningElement {
           outputStr = outputStr.replaceAll(fObjectId, translationMap[fObjectId]);
         });
         this.output = outputStr;
+        console.log(this.output);
         this.showOutput = true;
         this.jsonToTable(JSON.parse(this.output));
+        this.showSpinner = false;
       })
       .catch(error => {
         this.handleError(console.error());
@@ -138,12 +162,22 @@ export default class CcSimpleSimulator extends LightningElement {
 
   getFieloConfiguration() {
     getConfiguration({
-      memberId: this.member.Id
+      memberId: this.member.Id,
+      objectName: this.objectName,
+      dateField: this.dateField
     })
     .then(result => {
       this.config = result;
       console.info(JSON.stringify(this.config, null, 2));
       this.outputColumns = [...this.config.columns];
+
+      if (this.config.dateField) {
+        this.filterLabels.from = `${this.config.dateField.label} ${this.filterLabels.from}`;
+        this.filterLabels.to = `${this.config.dateField.label} ${this.filterLabels.to}`;
+      }
+      if (this.config.objectInfo) {
+        this.label.selectRecords = `Select ${this.config.objectInfo.labelPlural.toLowerCase()}`;
+      }
     })
     .catch(error => {
       this.handleError(error);
@@ -153,12 +187,13 @@ export default class CcSimpleSimulator extends LightningElement {
   handleError(error) {
     console.error(error);
     const errorEvent = new ShowToastEvent({
-        title: 'Error',
-        message: JSON.stringify(error),
-        variant: 'error',
-        mode: 'dismissable'
-      });
-      this.dispatchEvent(errorEvent);
+      title: 'Error',
+      message: JSON.stringify(error),
+      variant: 'error',
+      mode: 'dismissable'
+    });
+    this.dispatchEvent(errorEvent);
+    this.showSpinner = false;
   }
 
   jsonToTable(result) {
@@ -208,6 +243,24 @@ export default class CcSimpleSimulator extends LightningElement {
             let newRow = Object.assign({},row);
             delete newRow.incentive;
             newRow.id = ++summaryNum;
+
+            newRow._children = [];
+            Boolean(incentives[inc].segments && incentives[inc].segments.length) && incentives[inc].segments.forEach(segment => {
+              Boolean(segment.criteria && segment.criteria.length) && segment.criteria.forEach(criterion => {
+                newRow._children.push({
+                  id: ++summaryNum,
+                  eligibility: criterion.nameCriterion,
+                  eligibleIcon: criterion.applyCriterion ? 'utility:success' : 'utility:ban'
+                })
+              });
+            });
+            Boolean(rew.criteria && rew.criteria.length) && rew.criteria.forEach(criterion => {
+              newRow._children.push({
+                id: ++summaryNum,
+                eligibility: criterion.nameCriterion,
+                eligibleIcon: criterion.applyCriterion ? 'utility:success' : 'utility:ban'
+              })
+            })
             this.summaryMap[row.incentive]._children.push(newRow);
             this.summaryMap[row.incentive][curr] += row[curr];
           });
@@ -215,10 +268,12 @@ export default class CcSimpleSimulator extends LightningElement {
       });
     });
     this.summaryRows = Object.values(this.summaryMap);
+
+    this.currencySummaryItemSize = Boolean(this.summaryRows && this.summaryRows.length) && 12 / this.summaryRows.length || 1;
+
     this.hasSummary = Boolean(this.currencySummary && this.currencySummary.length);
     this.hasOutput = Boolean(this.rows && this.rows.length);
-
-    if (this.hasOutput) this._selectedStep = 'output';
+    this.toggleUexSwitch(this.hasOutput);
 
     var records = this.template.querySelector(".fielo-records-to-simulate");
     if (records) {
@@ -229,8 +284,8 @@ export default class CcSimpleSimulator extends LightningElement {
       output.classList.remove('slds-hide');
     }
 
-    this.showSimulateButton = false;
-    this.showSelectRecordsButton = true;
+    this.toggleSimulateButton(false);
+    this.toggleRecordSelectionButton(true);
 
     this.handleSummaryClick();
   }
@@ -244,8 +299,9 @@ export default class CcSimpleSimulator extends LightningElement {
     if (output) {
       output.classList.add('slds-hide');
     }
-    this.showSelectRecordsButton = false;
-    this.showSimulateButton = true;
+
+    this.toggleRecordSelectionButton(false);
+    this.toggleSimulateButton(true);
   }
 
   handleSummaryClick() {
@@ -256,5 +312,51 @@ export default class CcSimpleSimulator extends LightningElement {
   handleTableClick() {
     this.isTableOutput = true;
     this.isSummaryOutput = false;
+  }
+
+  simulateBtn;
+  recordSelectBtn;
+  uexButtonsContainer;
+
+  initButtons() {
+    if (!Boolean(this.simulateBtn))
+      this.simulateBtn = this.template.querySelector(".fielo-simulate-button");
+
+    if (!Boolean(this.recordSelectBtn))
+      this.recordSelectBtn = this.template.querySelector(".fielo-select-records-button");
+
+    if (!Boolean(this.uexButtonsContainer))
+      this.uexButtonsContainer = this.template.querySelector(".fielo-output-uex-switch");
+  }
+
+  toggleSimulateButton(enable) {
+    this.initButtons();
+    if(enable) {
+      this.simulateBtn.classList.remove('slds-hide');
+    } else {
+      this.simulateBtn.classList.add('slds-hide');
+    }
+  }
+
+  toggleRecordSelectionButton(enable) {
+    this.initButtons();
+    if(enable) {
+      this.recordSelectBtn.classList.remove('slds-hide');
+    } else {
+      this.recordSelectBtn.classList.add('slds-hide');
+    }
+  }
+
+  toggleUexSwitch(enable) {
+    this.initButtons();
+    if(enable) {
+      this.uexButtonsContainer.classList.remove('slds-hide');
+    } else {
+      this.uexButtonsContainer.classList.add('slds-hide');
+    }
+  }
+
+  handleFilter(e) {
+
   }
 }

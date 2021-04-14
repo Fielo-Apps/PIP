@@ -11,7 +11,7 @@ public class SimpleSimulatorController {
     public static Object getRecords(String memberId, String objectName){
 
         List<FieloPLT__Action__c> actions = (List<FieloPLT__Action__c>) Database.query(
-            'SELECT Id, FieloPLT__CriteriaFields__c FROM FieloPLT__Action__c WHERE FieloPLT__RuleTrigger__r.FieloPLT__Object__c = :objectName'
+            'SELECT Id, FieloPLT__CriteriaFields__c, FieloPLT__ConditionField__c FROM FieloPLT__Action__c WHERE FieloPLT__RuleTrigger__r.FieloPLT__Object__c = :objectName'
         );
 
 
@@ -33,6 +33,11 @@ public class SimpleSimulatorController {
             }
 
             fieldsByObject = SimulatorService.getFieldsMap(criterias);
+            for(FieloPLT__Action__c action : actions) {
+                if (String.isNotBlank(action.FieloPLT__ConditionField__c) && !fieldsByObject.isEmpty()) {
+                    fieldsByObject.get(objectName).add(action.FieloPLT__ConditionField__c);
+                }
+            }
         }
 
         if (fieldsByObject.isEmpty()) {
@@ -208,9 +213,28 @@ public class SimpleSimulatorController {
     }
 
     @AuraEnabled
-    public static Object getConfiguration(String memberId){
+    public static Object getConfiguration(String memberId, String objectName, String dateField){
         try {
             Map<String, Object> fieloConfig = new Map<String, Object>();
+
+            Map<String,String> objectInfo = new Map<String,String>();
+
+            DescribeSObjectResult objDescribe = ((sObject)Type.forName(objectName).newInstance()).getSObjectType().getDescribe();
+
+            objectInfo.put('name', objDescribe.getName());
+            objectInfo.put('label', objDescribe.getLabel());
+            objectInfo.put('labelPlural', objDescribe.getLabelPlural());
+
+            Map<String,String> dateFieldInfo = new Map<String,String>();
+
+            DescribeFieldResult fieldDesc = objDescribe.fields.getMap().get(dateField).getDescribe();
+
+            dateFieldInfo.put('name',fieldDesc.getName());
+            dateFieldInfo.put('label',fieldDesc.getLabel());
+            dateFieldInfo.put('type',fieldDesc.getType().name());
+
+            fieloConfig.put('dateField', (object) dateFieldInfo);
+            fieloConfig.put('objectInfo', (object) objectInfo);
 
             FieloPLT__Member__c member = [SELECT Id, FieloPLT__Program__c FROM FieloPLT__Member__c WHERE Id = :memberId];
 
@@ -229,6 +253,19 @@ public class SimpleSimulatorController {
                     'wrapText' =>   (object) true
                 },
                 new Map<String, Object> {
+                    'name'              => (object) 'eligibility',
+                    'fieldName'         => (object) 'eligibility',
+                    'type'              => (object) 'text',
+                    'label'             => (object) 'Eligibility Criteria to Meet',
+                    'wrapText'          => (object) true,
+                    'cellAttributes'    => (object) new Map<String, Object> {
+                                            'iconName' => new Map<String, String> {
+                                                'fieldName' => 'eligibleIcon'
+                                            },
+                                            'class' => 'fielo-color-icon'
+                                        }
+                },
+                new Map<String, Object> {
                     'name' =>       (object) 'status',
                     'fieldName' =>  (object) 'status',
                     'type' =>       (object) 'text',
@@ -238,7 +275,7 @@ public class SimpleSimulatorController {
                     'name' =>       (object) 'record',
                     'fieldName' =>  (object) 'record',
                     'type' =>       (object) 'text',
-                    'label' =>      (object) 'Record',
+                    'label' =>      (object) objDescribe.getLabel(),
                     'wrapText' =>   (object) true
                 }
             };

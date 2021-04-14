@@ -1,10 +1,11 @@
 <aura:component implements="forceCommunity:availableForAllPageTypes,flexipage:availableForAllPageTypes"  access="global">
     <aura:attribute name="member" type="FieloPLT__Member__c" access="private"/>
     <aura:attribute name="objectName" type="String" access="global"/>
+    <aura:attribute name="dateField" type="String" access="global"/>
 
     <aura:handler event="FieloPLT:UpdateMemberEvent" action="{!c.updateMember}"/>
 
     <aura:handler name="init" action="{!c.doInit}" value="{!this}"/>
 
-    <c:ccSimpleSimulator aura:id="pipsim" objectName="{!v.objectName}"></c:ccSimpleSimulator>
+    <c:ccSimpleSimulator aura:id="pipsim" objectName="{!v.objectName}" dateField="{!v.dateField}"></c:ccSimpleSimulator>
 </aura:component>

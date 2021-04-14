@@ -1,3 +1,12 @@
 .fielo-output-summary {
     padding-top:0px !important
 }
+
+.fielo-buttons-container{
+    height: 1.875rem
+}
+
+.fielo-filter__button-container {
+	padding-top: 2rem;
+	place-self: center;
+}
