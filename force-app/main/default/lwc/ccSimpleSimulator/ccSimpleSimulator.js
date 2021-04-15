@@ -317,8 +317,9 @@ export default class CcSimpleSimulator extends LightningElement {
   simulateBtn;
   recordSelectBtn;
   uexButtonsContainer;
+  outcomeSummaryElement;
 
-  initButtons() {
+  initElements() {
     if (!Boolean(this.simulateBtn))
       this.simulateBtn = this.template.querySelector(".fielo-simulate-button");
 
@@ -327,19 +328,24 @@ export default class CcSimpleSimulator extends LightningElement {
 
     if (!Boolean(this.uexButtonsContainer))
       this.uexButtonsContainer = this.template.querySelector(".fielo-output-uex-switch");
+
+    if (!Boolean(this.outcomeSummaryElement))
+      this.outcomeSummaryElement = this.template.querySelector(".fielo-output-summary");
   }
 
   toggleSimulateButton(enable) {
-    this.initButtons();
+    this.initElements();
     if(enable) {
       this.simulateBtn.classList.remove('slds-hide');
+      this.outcomeSummaryElement.classList.add('slds-hide')
     } else {
       this.simulateBtn.classList.add('slds-hide');
+      Boolean(this.outcomeSummaryElement) && this.outcomeSummaryElement.classList.remove('slds-hide')
     }
   }
 
   toggleRecordSelectionButton(enable) {
-    this.initButtons();
+    this.initElements();
     if(enable) {
       this.recordSelectBtn.classList.remove('slds-hide');
     } else {
@@ -348,7 +354,7 @@ export default class CcSimpleSimulator extends LightningElement {
   }
 
   toggleUexSwitch(enable) {
-    this.initButtons();
+    this.initElements();
     if(enable) {
       this.uexButtonsContainer.classList.remove('slds-hide');
     } else {
