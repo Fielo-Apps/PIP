@@ -191,10 +191,13 @@ export default class CcSimpleSimulator extends LightningElement {
   }
 
   handleError(error) {
-    console.error(error);
     const errorEvent = new ShowToastEvent({
       title: 'Error',
-      message: JSON.stringify(error),
+      message: error &&
+        error.body &&
+        error.body.message ||
+        (error && error.name && error.name+':') +
+        (error && error.message && error.message),
       variant: 'error',
       mode: 'dismissable'
     });
