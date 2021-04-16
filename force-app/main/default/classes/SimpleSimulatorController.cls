@@ -56,6 +56,8 @@ public class SimpleSimulatorController {
 
         if (objectName == 'Opportunity') {
             fieldsByObject.get(objectName).add('CloseDate');
+        } else if (objectName == 'Lead') {
+            fieldsByObject.get(objectName).add('CreatedDate');
         }
 
         List<Map<String,Object>> columns = new List<Map<String,Object>>();
