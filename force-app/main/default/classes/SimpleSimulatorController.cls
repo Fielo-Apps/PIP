@@ -54,12 +54,6 @@ public class SimpleSimulatorController {
             fieldsByObject.put(objectName, new Set<String>{'Id','Name'});
         }
 
-        if (objectName == 'Opportunity') {
-            fieldsByObject.get(objectName).add('CloseDate');
-        } else if (objectName == 'Lead') {
-            fieldsByObject.get(objectName).add('CreatedDate');
-        }
-
         List<Map<String,Object>> columns = new List<Map<String,Object>>();
 
         Map<String, Schema.SObjectField> objectFields = ((sObject)Type.forName(objectName).newInstance()).getSObjectType().getDescribe().fields.getMap();
