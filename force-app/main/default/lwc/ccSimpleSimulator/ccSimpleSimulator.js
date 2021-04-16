@@ -105,7 +105,7 @@ export default class CcSimpleSimulator extends LightningElement {
       this.showSpinner = false;
     })
     .catch(error => {
-      console.error(error)
+      this.handleError(error);
     })
   }
 
@@ -154,11 +154,11 @@ export default class CcSimpleSimulator extends LightningElement {
         this.showSpinner = false;
       })
       .catch(error => {
-        this.handleError(console.error());
+        this.handleError(error);
       })
     })
     .catch(error => {
-      this.handleError(console.error());
+      this.handleError(error);
     })
   }
 
