@@ -11,7 +11,7 @@ public class SimpleSimulatorController {
     public static Object getRecords(String memberId, String objectName, String jsonFilter){
 
         List<FieloPLT__Action__c> actions = (List<FieloPLT__Action__c>) Database.query(
-            'SELECT Id, FieloPLT__CriteriaFields__c, FieloPLT__ConditionField__c, FieloPLT__ConditionValue__c, FieloPLT__ConditionType__c FROM FieloPLT__Action__c WHERE FieloPLT__RuleTrigger__r.FieloPLT__Object__c = :objectName'
+            'SELECT Id, FieloPLT__CriteriaFields__c, FieloPLT__ConditionField__c, FieloPLT__ConditionValue__c, FieloPLT__ConditionType__c, FieloPLT__RuleTrigger__r.FieloPLT__Date__c FROM FieloPLT__Action__c WHERE FieloPLT__RuleTrigger__r.FieloPLT__Object__c = :objectName'
         );
 
         List<String> actionFilters = new List<String>();
@@ -47,6 +47,7 @@ public class SimpleSimulatorController {
                     actionFilters.add(getWhereCondition(JSON.serialize(actionFilter),objectName));
                 }
             }
+            fieldsByObject.get(objectName).add(action.FieloPLT__RuleTrigger__r.FieloPLT__Date__c);
         }
 
         if (fieldsByObject.isEmpty()) {
