@@ -22,8 +22,10 @@ export default class CcSimpleSimulator extends LightningElement {
   @track filters = '';
 
   @track relatedRecords = [];
+  @track filteredRelatedRecords = [];
   @track relatedColumns = [];
-  @track outputColumns = [];
+  @track outputTableColumns = [];
+  @track outputSummaryColumns = [];
   @track selectedIds;
 
   @track currencySummary;
@@ -51,6 +53,7 @@ export default class CcSimpleSimulator extends LightningElement {
   };
 
   config = {};
+  filter = {};
 
   @api objectName;
   @api dateField = 'CreatedDate';
@@ -100,7 +103,7 @@ export default class CcSimpleSimulator extends LightningElement {
       }.bind(this))
 
       this.hasRecords = this.relatedRecords && this.relatedRecords.length;
-
+      this.filteredRelatedRecords = this.relatedRecords;
       this.showSpinner = false;
     })
     .catch(error => {
@@ -170,7 +173,11 @@ export default class CcSimpleSimulator extends LightningElement {
     .then(result => {
       this.config = result;
       console.info(JSON.stringify(this.config, null, 2));
-      this.outputColumns = [...this.config.columns];
+      this.outputTableColumns = [...this.config.columns];
+      let colRecord = this.config.columns.filter(function (col){return col.fieldName === 'record'})[0];
+      this.outputSummaryColumns = [...this.config.columns.filter(function (col){return col.fieldName !== 'record'})];
+      let incentiveIndex = this.outputSummaryColumns.map(function(col) {return col.fieldName; }).indexOf('incentive');
+      this.outputSummaryColumns[incentiveIndex].label += ` / ${colRecord.label}`;
 
       if (this.config.dateField) {
         this.filterLabels.from = `${this.config.dateField.label} ${this.filterLabels.from}`;
@@ -242,9 +249,8 @@ export default class CcSimpleSimulator extends LightningElement {
                 this.summaryMap[row.incentive][curr] = 0;
             }
             let newRow = Object.assign({},row);
-            delete newRow.incentive;
             newRow.id = ++summaryNum;
-
+            newRow.incentive = record;
             newRow._children = [];
             Boolean(incentives[inc].segments && incentives[inc].segments.length) && incentives[inc].segments.forEach(segment => {
               Boolean(segment.criteria && segment.criteria.length) && segment.criteria.forEach(criterion => {

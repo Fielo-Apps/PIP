@@ -41,13 +41,13 @@
 
     <lightning-layout class="slds-p-around_x-medium">
         <lightning-layout-item class="slds-p-horizontal_medium slds-p-top_small">
-            <lightning-input class="fielo-filter__from" type="date" name="dateField" label={filterLabels.from} date-style="short"></lightning-input>
+            <lightning-input class="fielo-filter__from" type="date" name="from" label={filterLabels.from} date-style="short" onchange={handleInputFilterChange}></lightning-input>
         </lightning-layout-item>
         <lightning-layout-item class="slds-p-horizontal_medium slds-p-top_small">
-            <lightning-input class="fielo-filter__to" type="date" name="dateField" label={filterLabels.to} date-style="short"></lightning-input>
+            <lightning-input class="fielo-filter__to" type="date" name="to" label={filterLabels.to} date-style="short" onchange={handleInputFilterChange}></lightning-input>
         </lightning-layout-item>
         <lightning-layout-item class="slds-p-horizontal_medium slds-p-top_small fielo-filter__button-container">
-            <lightning-button class="slds-m-left_x-small fielo-filter-button" variant="brand" label="Filter" title="Successful action" onclick={handleFilter} ></lightning-button>
+            <lightning-button class="slds-m-left_x-small fielo-filter-button" variant="brand" label="Filter" title="Successful action" onclick={doFilter} ></lightning-button>
         </lightning-layout-item>
     </lightning-layout>
 
@@ -69,7 +69,7 @@
             <div class="slds-p-top_small slds-p-bottom_medium slds-text-heading_small">
             Select the records you want to simulate:
             </div>
-            <lightning-datatable data={relatedRecords} columns={relatedColumns} key-field="Id"
+            <lightning-datatable data={filteredRelatedRecords} columns={relatedColumns} key-field="Id"
                 onrowselection={handleSelectedRecord}></lightning-datatable>
         </div>
     </template>
@@ -81,10 +81,10 @@
             </div>
             <div class="slds-var-m-around_medium fielo-simulation-result slds-size_1-of-1">
                 <template if:true={isTableOutput}>
-                    <lightning-datatable class="fielo-output-as-table" data={rows} columns={outputColumns} key-field="Id"></lightning-datatable>
+                    <lightning-datatable class="fielo-output-as-table" data={rows} columns={outputTableColumns} key-field="Id"></lightning-datatable>
                 </template>
                 <template if:true={isSummaryOutput}>
-                    <lightning-tree-grid class="fielo-output-as-summary" columns={outputColumns} data={summaryRows} expanded-rows={expandedRows} key-field="id"></lightning-tree-grid>
+                    <lightning-tree-grid class="fielo-output-as-summary" columns={outputSummaryColumns} data={summaryRows} expanded-rows={expandedRows} key-field="id"></lightning-tree-grid>
                 </template>
             </div>
         </div>
