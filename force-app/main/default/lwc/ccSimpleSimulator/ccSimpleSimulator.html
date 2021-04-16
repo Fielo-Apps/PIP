@@ -74,6 +74,14 @@
         </div>
     </template>
 
+    <template if:false={hasRecords}>
+        <div class="slds-var-m-around_medium fielo-records-to-simulate">
+            <div class="slds-p-top_small slds-p-bottom_medium slds-text-heading_small">
+            No records to display
+            </div>
+        </div>
+    </template>
+
     <template if:true={hasOutput}>
         <div class="slds-var-m-around_medium fielo-records-outcome">
             <div class="slds-p-top_small slds-p-bottom_medium slds-text-heading_small">

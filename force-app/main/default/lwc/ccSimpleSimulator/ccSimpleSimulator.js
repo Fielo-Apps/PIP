@@ -377,7 +377,7 @@ export default class CcSimpleSimulator extends LightningElement {
       this.filterToElement = this.template.querySelector(".fielo-filter__to");
   }
 
-  handleFilter(e) {
+  handleFilter() {
     this.initFilter();
     let filter = {};
     filter[this.dateField] = `FROM:${this.filterFromElement.value.toISOString()}TO:${this.filterToElement.toISOString()}`;

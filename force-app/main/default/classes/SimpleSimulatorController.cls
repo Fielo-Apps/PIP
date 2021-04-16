@@ -339,110 +339,116 @@ public class SimpleSimulatorController {
     private static string getWhereCondition(String filterJson, String objectName) {
         Map<String, Schema.SObjectField> objectFields = ((sObject)Type.forName(objectName).newInstance()).getSObjectType().getDescribe().fields.getMap();
 
-        String whereCondition = '';
+        List<String> conditions = new List<String>();
+        List<String> innerConditions = new List<String>();
         if (String.isNotBlank(filterJson) && filterJson != null ) {
-            try {
-                Map<String,Object> filter = (Map<String, Object>) JSON.deserializeUntyped( filterJson);
-                for ( String k :filter.keySet() ) {
-                    String value = string.valueOf(filter.get(k));
-                    if (value == null || value == 'null') {
-                        whereCondition += ' AND ' + String.escapeSingleQuotes(k) + ' = null';
-                    } else if(value.toLowerCase() == '!null') {
-                        whereCondition += ' AND ' + String.escapeSingleQuotes(k) + ' != null';
-                    } else {
-                        if(value.startsWith('BOOLEAN:')){
-                                whereCondition += ' AND ' + String.escapeSingleQuotes(k) + ' = ' +  String.escapeSingleQuotes(value.removeStart('BOOLEAN:'));
-                        } else if(value.startsWith('LIKE:')){
-                                if (objectName.toLowerCase() == 'fieloplt__member__c' && String.escapeSingleQuotes(k).toLowerCase() == 'name') {
-                                    whereCondition += ' AND (' + String.escapeSingleQuotes(k) + ' LIKE \'%' +  String.escapeSingleQuotes(value.removeStart('LIKE:')) + '%\'' +
-                                    ' OR FieloPLT__Email__c LIKE \'%' +  String.escapeSingleQuotes(value.removeStart('LIKE:')) + '%\') ';
-                                } else {
-                                    whereCondition += ' AND ' + String.escapeSingleQuotes(k) + ' LIKE \'%' +  String.escapeSingleQuotes(value.removeStart('LIKE:')) + '%\'';
-                                }
-                        } else if ( value.startsWith('!') ) {
-                                whereCondition += ' AND ' + String.escapeSingleQuotes(k) + ' <> \'' +  String.escapeSingleQuotes(value.substring(1)) + '\'';
-                        } else if ( value.startsWith('IN:') ) {
-                                string value2 = value.removeStart('IN:');
-                                List<String> ids = new List<String>();
-
-                                for(String str: value2.split(',')){
-                                    string strc = '\'' + str  + '\'';
-                                    ids.add(strc);
-                                }
-                                whereCondition += ' AND '  + String.escapeSingleQuotes(k) + ' IN ' + ids;
-                        } else if ( value.startsWith('FROM:') ) {
-                            value = value.removeStart('FROM:');
-
-                            if (objectFields.get(k).getDescribe().getSOAPType().name().tolowercase() == 'double') {
-                                List<String> numbers = new List<String>();
-
-                                if (value.contains('TO:')) {
-                                    numbers = value.split('TO:');
-                                } else {
-                                    numbers.add(value);
-                                }
-
-                                for (Integer i = 0; i < numbers.size(); i++) {
-                                    whereCondition += ' AND ' + String.escapeSingleQuotes(k);
-                                    if (i == 0) {
-                                        // FROM
-                                        whereCondition += ' >= ';
-                                    } else {
-                                        // TO
-                                        whereCondition += ' <= ';
-                                    }
-                                    whereCondition += numbers[i];
-                                }
-
+            Map<String,Object> filter = (Map<String, Object>) JSON.deserializeUntyped( filterJson);
+            for ( String k :filter.keySet() ) {
+                String whereCondition = '';
+                String value = string.valueOf(filter.get(k));
+                if (value == null || value == 'null') {
+                    whereCondition = String.escapeSingleQuotes(k) + ' = null';
+                } else if(value.toLowerCase() == '!null') {
+                    whereCondition = String.escapeSingleQuotes(k) + ' != null';
+                } else {
+                    if(value.startsWith('BOOLEAN:')){
+                            whereCondition = String.escapeSingleQuotes(k) + ' = ' +  String.escapeSingleQuotes(value.removeStart('BOOLEAN:'));
+                    } else if(value.startsWith('LIKE:')){
+                            if (objectName.toLowerCase() == 'fieloplt__member__c' && String.escapeSingleQuotes(k).toLowerCase() == 'name') {
+                                whereCondition = '(' + String.escapeSingleQuotes(k) + ' LIKE \'%' +  String.escapeSingleQuotes(value.removeStart('LIKE:')) + '%\'' +
+                                ' OR FieloPLT__Email__c LIKE \'%' +  String.escapeSingleQuotes(value.removeStart('LIKE:')) + '%\') ';
                             } else {
-                                Date tempDate = Date.today();
-                                DateTime tempDateTime = DateTime.newInstance(0);
-                                List<String> dates = new List<String>();
-
-                                if (value.contains('TO:')) {
-                                    dates = value.split('TO:');
-                                } else {
-                                    dates.add(value);
-                                }
-
-                                for (Integer i = 0; i < dates.size(); i++) {
-                                    tempDate = Date.valueOf(dates[i]);
-                                    tempDateTime = DateTime.newInstance(tempDate.year(), tempDate.month(), tempDate.day());
-
-                                    whereCondition += ' AND ' + String.escapeSingleQuotes(k);
-                                    if (i == 0) {
-                                        // FROM
-                                        whereCondition += ' >= ';
-                                    } else {
-                                        // TO
-                                        whereCondition += ' <= ';
-                                    }
-                                    if (objectFields.get(k).getDescribe().getType().name().tolowercase() == 'datetime') {
-                                        whereCondition += tempDateTime.format('yyyy-MM-dd\'T00:00:00Z\'');
-                                    } else {
-                                        whereCondition += tempDateTime.format('yyyy-MM-dd');
-                                    }
-                                }
+                                whereCondition = String.escapeSingleQuotes(k) + ' LIKE \'%' +  String.escapeSingleQuotes(value.removeStart('LIKE:')) + '%\'';
                             }
-                        } else if ( value.startsWith('TO:') ) {
-                            Date tempDate = Date.valueOf(value.removeStart('TO:'));
-                            DateTime tempDateTime = DateTime.newInstance(tempDate.year(), tempDate.month(), tempDate.day());
+                    } else if ( value.startsWith('!') ) {
+                            whereCondition = String.escapeSingleQuotes(k) + ' <> \'' +  String.escapeSingleQuotes(value.substring(1)) + '\'';
+                    } else if ( value.startsWith('IN:') ) {
+                            string value2 = value.removeStart('IN:');
+                            List<String> ids = new List<String>();
 
-                            whereCondition += ' AND '  + String.escapeSingleQuotes(k) + ' <= ' + tempDateTime.format('yyyy-MM-dd\'T00:00:00Z\'') ;
-                        } else if ( objectName.tolowercase() == 'FieloPLT__Reward__c' && k.tolowercase() == 'fieloplt__program__c'){
-                                whereCondition += ' AND ( ' +
-                                    String.escapeSingleQuotes(k) + ' = \'' +  String.escapeSingleQuotes(value) + '\' OR ' +
-                                    String.escapeSingleQuotes(k) + ' = null ' +
-                                    ')';
+                            for(String str: value2.split(',')){
+                                string strc = '\'' + str  + '\'';
+                                ids.add(strc);
+                            }
+                            whereCondition += String.escapeSingleQuotes(k) + ' IN ' + ids;
+                    } else if ( value.startsWith('FROM:') ) {
+                        value = value.removeStart('FROM:');
+
+                        if (objectFields.get(k).getDescribe().getSOAPType().name().tolowercase() == 'double') {
+                            List<String> numbers = new List<String>();
+
+                            if (value.contains('TO:')) {
+                                numbers = value.split('TO:');
+                            } else {
+                                numbers.add(value);
+                            }
+
+                            innerConditions = new List<String>();
+                            for (Integer i = 0; i < numbers.size(); i++) {
+                                whereCondition = String.escapeSingleQuotes(k);
+                                if (i == 0) {
+                                    // FROM
+                                    whereCondition += ' >= ';
+                                } else {
+                                    // TO
+                                    whereCondition += ' <= ';
+                                }
+                                whereCondition += numbers[i];
+                                innerConditions.add(whereCondition);
+                            }
+                            whereCondition = String.join(innerConditions, ' AND ');
                         } else {
-                                whereCondition += ' AND ' + String.escapeSingleQuotes(k) + ' = \'' +  String.escapeSingleQuotes(value) + '\'';
+                            Date tempDate = Date.today();
+                            DateTime tempDateTime = DateTime.newInstance(0);
+                            List<String> dates = new List<String>();
+
+                            if (value.contains('TO:')) {
+                                dates = value.split('TO:');
+                            } else {
+                                dates.add(value);
+                            }
+
+                            innerConditions = new List<String>();
+                            for (Integer i = 0; i < dates.size(); i++) {
+                                tempDate = Date.valueOf(dates[i]);
+                                tempDateTime = DateTime.newInstance(tempDate.year(), tempDate.month(), tempDate.day());
+
+                                whereCondition = String.escapeSingleQuotes(k);
+                                if (i == 0) {
+                                    // FROM
+                                    whereCondition += ' >= ';
+                                } else {
+                                    // TO
+                                    whereCondition += ' <= ';
+                                }
+                                if (objectFields.get(k).getDescribe().getType().name().tolowercase() == 'datetime') {
+                                    whereCondition += tempDateTime.format('yyyy-MM-dd\'T00:00:00Z\'');
+                                } else {
+                                    whereCondition += tempDateTime.format('yyyy-MM-dd');
+                                }
+                                innerConditions.add(whereCondition);
+                            }
+                            whereCondition = String.join(innerConditions, ' AND ');
                         }
+                    } else if ( value.startsWith('TO:') ) {
+                        Date tempDate = Date.valueOf(value.removeStart('TO:'));
+                        DateTime tempDateTime = DateTime.newInstance(tempDate.year(), tempDate.month(), tempDate.day());
+
+                        whereCondition = String.escapeSingleQuotes(k) + ' <= ' + tempDateTime.format('yyyy-MM-dd\'T00:00:00Z\'') ;
+                    } else if ( objectName.tolowercase() == 'FieloPLT__Reward__c' && k.tolowercase() == 'fieloplt__program__c'){
+                            whereCondition = '( ' +
+                                String.escapeSingleQuotes(k) + ' = \'' +  String.escapeSingleQuotes(value) + '\' OR ' +
+                                String.escapeSingleQuotes(k) + ' = null ' +
+                                ')';
+                    } else {
+                            whereCondition = String.escapeSingleQuotes(k) + ' = \'' +  String.escapeSingleQuotes(value) + '\'';
                     }
                 }
-            } catch( JSONException e ) {
-                system.debug(LoggingLevel.ERROR, 'INVALID JSON ' + filterJson );
+                if (String.isNotBlank(whereCondition)) {
+                    conditions.add(whereCondition);
+                }
             }
         }
-        return whereCondition;
+        return String.join(conditions, ' AND ');
     }
 }
