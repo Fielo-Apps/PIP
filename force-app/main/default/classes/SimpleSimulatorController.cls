@@ -8,7 +8,7 @@ public class SimpleSimulatorController {
     }
 
     @AuraEnabled
-    public static Object getRecords(String memberId, String objectName, String jsonFilter){
+    public static Object getRecords(String memberId, String objectName, String jsonFilter, String recordsPerPage, String offset){
 
         List<FieloPLT__Action__c> actions = (List<FieloPLT__Action__c>) Database.query(
             'SELECT Id, FieloPLT__CriteriaFields__c, FieloPLT__ConditionField__c, FieloPLT__ConditionValue__c, FieloPLT__ConditionType__c, FieloPLT__RuleTrigger__r.FieloPLT__Date__c FROM FieloPLT__Action__c WHERE FieloPLT__RuleTrigger__r.FieloPLT__Object__c = :objectName'
@@ -167,7 +167,7 @@ public class SimpleSimulatorController {
             String.join(new List<String>(fields), ', ') +
             ' FROM ' + objectName +
             ' WHERE ' + String.join(new List<String>(whereClauses), ' AND ') +
-            ' ORDER BY LastModifiedDate DESC LIMIT 10';
+            ' ORDER BY LastModifiedDate DESC LIMIT ' + recordsPerPage + ' OFFSET ' + offset;
 
         System.debug('query: ' + query);
 
