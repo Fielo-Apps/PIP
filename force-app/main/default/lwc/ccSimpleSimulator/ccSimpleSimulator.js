@@ -380,7 +380,7 @@ export default class CcSimpleSimulator extends LightningElement {
   handleFilter() {
     this.initFilter();
     let filter = {};
-    filter[this.dateField] = `FROM:${this.filterFromElement.value.toISOString()}TO:${this.filterToElement.toISOString()}`;
+    filter[this.dateField] = `FROM:${this.filterFromElement.value.toISOString()}TO:${this.filterToElement.value.toISOString()}`;
     this.filters = JSON.stringify(filter);
 
     console.log(this.filters);
