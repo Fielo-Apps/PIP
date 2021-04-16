@@ -46,8 +46,8 @@ public class SimpleSimulatorController {
 
                     actionFilters.add(getWhereCondition(JSON.serialize(actionFilter),objectName));
                 }
+                fieldsByObject.get(objectName).add(action.FieloPLT__RuleTrigger__r.FieloPLT__Date__c);
             }
-            fieldsByObject.get(objectName).add(action.FieloPLT__RuleTrigger__r.FieloPLT__Date__c);
         }
 
         if (fieldsByObject.isEmpty()) {
