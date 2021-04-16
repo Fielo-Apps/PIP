@@ -69,7 +69,7 @@
             <div class="slds-p-top_small slds-p-bottom_medium slds-text-heading_small">
             Select the records you want to simulate:
             </div>
-            <lightning-datatable data={filteredRelatedRecords} columns={relatedColumns} key-field="Id"
+            <lightning-datatable data={relatedRecords} columns={relatedColumns} key-field="Id"
                 onrowselection={handleSelectedRecord}></lightning-datatable>
         </div>
     </template>

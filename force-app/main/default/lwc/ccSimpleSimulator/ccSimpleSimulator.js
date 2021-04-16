@@ -22,7 +22,6 @@ export default class CcSimpleSimulator extends LightningElement {
   @track filters = '';
 
   @track relatedRecords = [];
-  @track filteredRelatedRecords = [];
   @track relatedColumns = [];
   @track outputTableColumns = [];
   @track outputSummaryColumns = [];
@@ -103,7 +102,6 @@ export default class CcSimpleSimulator extends LightningElement {
       }.bind(this))
 
       this.hasRecords = this.relatedRecords && this.relatedRecords.length;
-      this.filteredRelatedRecords = this.relatedRecords;
       this.showSpinner = false;
     })
     .catch(error => {
@@ -377,11 +375,25 @@ export default class CcSimpleSimulator extends LightningElement {
       this.filterToElement = this.template.querySelector(".fielo-filter__to");
   }
 
+  filterFromElement;
+  filterToElement;
+
   handleFilter() {
     this.initFilter();
-    let filter = {};
-    filter[this.dateField] = `FROM:${this.filterFromElement.value.toISOString()}TO:${this.filterToElement.value.toISOString()}`;
-    this.filters = JSON.stringify(filter);
+
+    let dateFilterStr = this.filterFromElement &&
+      this.filterFromElement.value &&
+      `FROM:${this.filterFromElement.value}` || '';
+
+    dateFilterStr += this.filterToElement &&
+      this.filterToElement.value &&
+      `TO:${this.filterToElement.value}`;
+
+    if (dateFilterStr) {
+      let filter = {};
+      filter[this.dateField] = dateFilterStr;
+      this.filters = JSON.stringify(filter);
+    }
 
     console.log(this.filters);
 

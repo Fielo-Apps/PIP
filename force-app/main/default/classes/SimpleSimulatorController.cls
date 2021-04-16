@@ -163,7 +163,7 @@ public class SimpleSimulatorController {
         }
 
         if (String.isNotBlank(jsonFilter)) {
-            whereClauses.add(getWhereCondition(JSON.serialize(jsonFilter),objectName));
+            whereClauses.add(getWhereCondition(jsonFilter,objectName));
         }
 
         String query = 'SELECT ' +
