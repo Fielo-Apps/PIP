@@ -383,10 +383,12 @@ export default class CcSimpleSimulator extends LightningElement {
 
     let dateFilterStr = this.filterFromElement &&
       this.filterFromElement.value &&
+      this.filterFromElement.value != "null" &&
       `FROM:${this.filterFromElement.value}` || '';
 
     dateFilterStr += this.filterToElement &&
       this.filterToElement.value &&
+      this.filterToElement.value != "null" &&
       `TO:${this.filterToElement.value}`;
 
     if (dateFilterStr) {
