@@ -199,7 +199,7 @@ public class TestSimulator {
 
         List<Map<String,String>> relatedLists = SimulatorService.getRelatedLists('FieloPLT__Event__c', null);
 
-        Object records = SimpleSimulatorController.getRecords(member.Id, 'FieloPLT__Event__c');
+        Object records = SimpleSimulatorController.getRecords(member.Id, 'FieloPLT__Event__c', '');
     }
 
     @isTest

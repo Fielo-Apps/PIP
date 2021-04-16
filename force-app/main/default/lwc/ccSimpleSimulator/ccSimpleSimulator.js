@@ -78,7 +78,8 @@ export default class CcSimpleSimulator extends LightningElement {
   getRelatedRecords(){
     getRecords({
       memberId: this.member.Id,
-      objectName: this.objectName
+      objectName: this.objectName,
+      jsonFilter: this.filters
     })
     .then(result => {
       this.relatedRecords = [];
@@ -362,7 +363,22 @@ export default class CcSimpleSimulator extends LightningElement {
     }
   }
 
-  handleFilter(e) {
+  initFilter() {
+    if (!Boolean(this.filterFromElement))
+      this.filterFromElement = this.template.querySelector(".fielo-filter__from");
 
+    if (!Boolean(this.filterToElement))
+      this.filterToElement = this.template.querySelector(".fielo-filter__to");
+  }
+
+  handleFilter(e) {
+    this.initFilter();
+    let filter = {};
+    filter[this.dateField] = `FROM:${this.filterFromElement.value.toISOString()}TO:${this.filterToElement.toISOString()}`;
+    this.filters = JSON.stringify(filter);
+
+    console.log(this.filters);
+
+    this.getRelatedRecords();
   }
 }

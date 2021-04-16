@@ -8,7 +8,7 @@ public class SimpleSimulatorController {
     }
 
     @AuraEnabled
-    public static Object getRecords(String memberId, String objectName){
+    public static Object getRecords(String memberId, String objectName, String jsonFilter){
 
         List<FieloPLT__Action__c> actions = (List<FieloPLT__Action__c>) Database.query(
             'SELECT Id, FieloPLT__CriteriaFields__c, FieloPLT__ConditionField__c, FieloPLT__ConditionValue__c, FieloPLT__ConditionType__c FROM FieloPLT__Action__c WHERE FieloPLT__RuleTrigger__r.FieloPLT__Object__c = :objectName'
@@ -158,15 +158,21 @@ public class SimpleSimulatorController {
             whereClauses.add('(' + String.join(new List<String>(actionFilters), ' OR ') + ')');
         }
 
+        if (String.isNotBlank(jsonFilter)) {
+            whereClauses.add(getWhereCondition(JSON.serialize(jsonFilter),objectName));
+        }
+
         String query = 'SELECT ' +
             String.join(new List<String>(fields), ', ') +
             ' FROM ' + objectName +
             ' WHERE ' + String.join(new List<String>(whereClauses), ' AND ') +
             ' ORDER BY LastModifiedDate DESC LIMIT 10';
 
+        System.debug('query: ' + query);
+
         return (Object) new Map<String, Object>{
             'columns' => (Object) columns,
-            'records' => (Object) Database.query()
+            'records' => (Object) Database.query(query)
         };
     }
 
@@ -428,9 +434,6 @@ public class SimpleSimulatorController {
                                 whereCondition += ' AND ' + String.escapeSingleQuotes(k) + ' = \'' +  String.escapeSingleQuotes(value) + '\'';
                         }
                     }
-                }
-                if ( whereCondition != '') {
-                    whereCondition = ' WHERE ' + whereCondition.substring(4);
                 }
             } catch( JSONException e ) {
                 system.debug(LoggingLevel.ERROR, 'INVALID JSON ' + filterJson );
