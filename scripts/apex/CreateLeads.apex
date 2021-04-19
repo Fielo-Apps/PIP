@@ -38,6 +38,7 @@ for(Integer i = 1; i <= 20; i++) {
     leads.add(new Lead(
         FirstName = firstName,
         LastName = lastName,
+        Company = accs.get(0).Name,
         Status = 'Open - Not Contacted',
         Member__c = members.get(0).Id
     ));
