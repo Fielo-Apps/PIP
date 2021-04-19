@@ -67,10 +67,21 @@
     <template if:true={hasRecords}>
         <div class="slds-var-m-around_medium fielo-records-to-simulate">
             <div class="slds-p-top_small slds-p-bottom_medium slds-text-heading_small">
-            Select the records you want to simulate:
+            {label.selectTheRecords}
             </div>
-            <lightning-datatable data={relatedRecords} columns={relatedColumns} key-field="Id"
-                onrowselection={handleSelectedRecord}></lightning-datatable>
+            <lightning-datatable class="fielo-records-table" data={relatedRecords} columns={relatedColumns} key-field="Id"
+                onrowselection={handleSelectedRecord} selected-rows={selectedRowsIds}></lightning-datatable>
+            <lightning-layout horizontal-align="spread" class="fielosf-list__paginator slds-m-bottom--large">
+                    <lightning-layout-item padding="around-small">
+                        <lightning-button label="Previous" onclick={handlePrevious} disabled={disablePrevious}></lightning-button>
+                    </lightning-layout-item>
+                    <lightning-layout-item padding="around-medium">
+                        {selectedPaginatorText}
+                    </lightning-layout-item>
+                    <lightning-layout-item padding="around-small">
+                        <lightning-button label="Next" onclick={handleNext} disabled={disableNext}></lightning-button>
+                    </lightning-layout-item>
+                </lightning-layout>
         </div>
     </template>
 
@@ -89,10 +100,10 @@
             </div>
             <div class="slds-var-m-around_medium fielo-simulation-result slds-size_1-of-1">
                 <template if:true={isTableOutput}>
-                    <lightning-datatable class="fielo-output-as-table" data={rows} columns={outputTableColumns} key-field="Id"></lightning-datatable>
+                    <lightning-datatable class="fielo-output-as-table" data={rows} columns={outputTableColumns} key-field="Id" ></lightning-datatable>
                 </template>
                 <template if:true={isSummaryOutput}>
-                    <lightning-tree-grid class="fielo-output-as-summary" columns={outputSummaryColumns} data={summaryRows} expanded-rows={expandedRows} key-field="id"></lightning-tree-grid>
+                    <lightning-tree-grid class="fielo-output-as-summary" columns={outputSummaryColumns} data={summaryRows} expanded-rows={expandedRows} key-field="id" ></lightning-tree-grid>
                 </template>
             </div>
         </div>

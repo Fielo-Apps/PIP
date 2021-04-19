@@ -6,6 +6,9 @@ import getConfiguration from '@salesforce/apex/SimpleSimulatorController.getConf
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { loadStyle } from "lightning/platformResourceLoader";
 import pipCss from '@salesforce/resourceUrl/pipCss';
+import SystemModstamp from '@salesforce/schema/Account.SystemModstamp';
+
+const recordsPerPage = 10;
 
 export default class CcSimpleSimulator extends LightningElement {
 
@@ -17,7 +20,6 @@ export default class CcSimpleSimulator extends LightningElement {
   @track hasSelectedRecords = false;
   @track hasOutput = false;
   @track hasSummary = false;
-  @track objectValue;
   @track output = '';
   @track filters = '';
 
@@ -25,7 +27,7 @@ export default class CcSimpleSimulator extends LightningElement {
   @track relatedColumns = [];
   @track outputTableColumns = [];
   @track outputSummaryColumns = [];
-  @track selectedIds;
+  @track selectedRowsIds;
 
   @track currencySummary;
 
@@ -48,7 +50,8 @@ export default class CcSimpleSimulator extends LightningElement {
   };
 
   @track label = {
-    selectRecords: 'Select records'
+    selectRecords: 'Select records',
+    selectTheRecords: 'Select the records you want to simulate'
   };
 
   config = {};
@@ -78,21 +81,39 @@ export default class CcSimpleSimulator extends LightningElement {
   }
 
   getRelatedRecords(){
+    this.showSpinner = true;
     getRecords({
       memberId: this.member.Id,
       objectName: this.objectName,
-      jsonFilter: this.filters
+      jsonFilter: this.filters,
+      recordsPerPage: recordsPerPage + 1,
+      offset: this.offset
     })
     .then(result => {
       this.relatedRecords = [];
       this.relatedColumns = [];
+      this.recordsIds = [];
+
+      // Set previous status
+      if (this.offset) {
+        this.disablePrevious = false;
+      } else {
+        this.disablePrevious = true;
+      }
+
+      this.disableNext = true;
 
       result &&
       result.records &&
       result.records.length &&
-      result.records.forEach(function(record) {
-        this.relatedRecords.push(record);
-      }.bind(this))
+      result.records.forEach((record, index) => {
+        if ( index === recordsPerPage  ) {
+          this.disableNext = false;
+        } else {
+          this.relatedRecords.push(record);
+          this.recordsIds.push(record.Id);
+        }
+      });
 
       result &&
       result.columns &&
@@ -102,6 +123,12 @@ export default class CcSimpleSimulator extends LightningElement {
       }.bind(this))
 
       this.hasRecords = this.relatedRecords && this.relatedRecords.length;
+
+      this.initTable();
+      if (this.table) {
+        this.table.selectedRows = this.selectedRowsIds;
+      }
+
       this.showSpinner = false;
     })
     .catch(error => {
@@ -109,22 +136,16 @@ export default class CcSimpleSimulator extends LightningElement {
     })
   }
 
-  handleSelectedRecord(event){
-    this.selectedIds = event.detail.selectedRows;
-
-    this.selectedIds.forEach(function(row) {
-      row.sobjectType = this.objectValue;
-    }.bind(this));
-
-    this.hasSelectedRecords = this.selectedIds && this.selectedIds.length;
-    this.toggleSimulateButton(this.hasSelectedRecords);
-  }
-
   handleSimulate() {
     this.showSpinner = true;
+
+    this.selectedRowsDataList.forEach(row => {
+      row.sobjectType = this.objectName;
+    });
+
     simulate({
       memberId: this.member.Id,
-      records: this.selectedIds
+      records: this.selectedRowsDataList
     })
     .then(output => {
       var idsToTranslate = [];
@@ -183,6 +204,7 @@ export default class CcSimpleSimulator extends LightningElement {
       }
       if (this.config.objectInfo) {
         this.label.selectRecords = `Select ${this.config.objectInfo.labelPlural.toLowerCase()}`;
+        this.label.selectTheRecords = `Select the ${this.config.objectInfo.labelPlural.toLowerCase()} you want to simulate`;
       }
     })
     .catch(error => {
@@ -191,6 +213,7 @@ export default class CcSimpleSimulator extends LightningElement {
   }
 
   handleError(error) {
+    console.error(error);
     const errorEvent = new ShowToastEvent({
       title: 'Error',
       message: error &&
@@ -298,20 +321,6 @@ export default class CcSimpleSimulator extends LightningElement {
     this.handleSummaryClick();
   }
 
-  handleSelectRecords() {
-    var records = this.template.querySelector(".fielo-records-to-simulate");
-    if (records) {
-      records.classList.remove('slds-hide');
-    }
-    var output = this.template.querySelector(".fielo-simulation-result");
-    if (output) {
-      output.classList.add('slds-hide');
-    }
-
-    this.toggleRecordSelectionButton(false);
-    this.toggleSimulateButton(true);
-  }
-
   handleSummaryClick() {
     this.isTableOutput = false;
     this.isSummaryOutput = true;
@@ -341,14 +350,19 @@ export default class CcSimpleSimulator extends LightningElement {
       this.outcomeSummaryElement = this.template.querySelector(".fielo-output-summary");
   }
 
+  initTable(){
+    if (!Boolean(this.table))
+      this.table = this.template.querySelector(".fielo-records-table");
+  }
+
   toggleSimulateButton(enable) {
     this.initElements();
     if(enable) {
-      this.simulateBtn.classList.remove('slds-hide');
-      this.outcomeSummaryElement.classList.add('slds-hide')
+      this.simulateBtn && this.simulateBtn.classList.remove('slds-hide');
+      this.outcomeSummaryElement && this.outcomeSummaryElement.classList.add('slds-hide')
     } else {
-      this.simulateBtn.classList.add('slds-hide');
-      Boolean(this.outcomeSummaryElement) && this.outcomeSummaryElement.classList.remove('slds-hide')
+      this.simulateBtn && this.simulateBtn.classList.add('slds-hide');
+      this.outcomeSummaryElement && this.outcomeSummaryElement.classList.remove('slds-hide')
     }
   }
 
@@ -403,5 +417,102 @@ export default class CcSimpleSimulator extends LightningElement {
     console.log(this.filters);
 
     this.getRelatedRecords();
+  }
+
+  @track offset = 0; // Offset of the resulted records
+  @track selectedOffset = 0; // Offset of the selected records
+  @track disablePrevious = true; // Check if there's a Next page of records
+  @track disableNext = true; // Check if there's a Next page of records
+  @track recordsCount = 0;
+  @track selectedRowsIds = [];
+  selectedRowsDataMap = {};
+  recordsIds; // Lists of recordsIds
+  table;
+
+  handlePrevious() {
+    this.disablePrevious = true;
+    this.disableNext = true;
+    this.offset -= recordsPerPage;
+    this.getRelatedRecords();
+  }
+
+  handleNext() {
+    this.disableNext = true;
+    this.disablePrevious = true;
+    this.offset += recordsPerPage;
+    this.getRelatedRecords();
+  }
+
+  handleSelectRecords() {
+    var records = this.template.querySelector(".fielo-records-to-simulate");
+    if (records) {
+      records.classList.remove('slds-hide');
+    }
+    var output = this.template.querySelector(".fielo-simulation-result");
+    if (output) {
+      output.classList.add('slds-hide');
+    }
+
+    this.toggleRecordSelectionButton(false);
+    this.toggleSimulateButton(true);
+  }
+
+/*   handleSelectedRecord(event){
+    this.selectedRowsIds = event.detail.selectedRows;
+
+    this.selectedRowsIds.forEach(function(row) {
+      row.sobjectType = this.objectName;
+    }.bind(this));
+
+    this.hasSelectedRecords = this.selectedRowsIds && this.selectedRowsIds.length;
+    this.toggleSimulateButton(this.hasSelectedRecords);
+  } */
+
+  handleSelectedRecord(event) {
+    var addedRecords, removedRecords;
+
+    // Get a list of current selected Ids
+    let currentSelectionIds = [];
+    let currentSelectionData = {};
+
+    event.detail.selectedRows.forEach( row => {
+      row.sobjectType = this.objectName;
+      currentSelectionIds.push(row.Id);
+      currentSelectionData[row.Id] = row;
+    });
+
+    // get the added records from the page
+    addedRecords = [...new Set([...currentSelectionIds].filter(x => !((new Set(this.selectedRowsIds)).has(x))))];
+
+    // get the removed records from the page
+    removedRecords = [...new Set([...this.recordsIds].filter(x => !((new Set(currentSelectionIds)).has(x))))];
+    // Remove them from the list
+    removedRecords.forEach(function (item) {
+      if (this.selectedRowsIds.includes(item)) {
+        this.selectedRowsIds.splice(this.selectedRowsIds.indexOf(item), 1);
+        delete this.selectedRowsDataMap[item];
+      }
+    }.bind(this));
+
+    // Add them to the list
+    this.selectedRowsIds.push(...addedRecords);
+
+    // Add them to the Map
+    addedRecords.forEach(function (item) {
+      this.selectedRowsDataMap[item] = currentSelectionData[item];
+    }.bind(this));
+
+    // Update the list
+    let tempDataList = [];
+    this.selectedRowsIds.forEach(function (item) {
+      tempDataList.push(this.selectedRowsDataMap[item]);
+    }.bind(this));
+    this.selectedRowsDataList = tempDataList;
+
+    console.log(JSON.stringify(this.selectedRowsIds, null, 2));
+    console.log(JSON.stringify(this.selectedRowsDataList, null, 2));
+
+    this.hasSelectedRecords = this.selectedRowsIds && this.selectedRowsIds.length;
+    this.toggleSimulateButton(this.hasSelectedRecords);
   }
 }
