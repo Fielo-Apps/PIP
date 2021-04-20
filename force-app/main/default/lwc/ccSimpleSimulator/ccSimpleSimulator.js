@@ -275,6 +275,7 @@ export default class CcSimpleSimulator extends LightningElement {
             let newRow = Object.assign({},row);
             newRow.id = ++summaryNum;
             newRow.incentive = record;
+            newRow.incentiveEligibleIcon = newRow.status === 'Eligible' ? 'utility:success' : 'utility:ban';
             newRow._children = [];
             Boolean(incentives[inc].segments && incentives[inc].segments.length) && incentives[inc].segments.forEach(segment => {
               Boolean(segment.criteria && segment.criteria.length) && segment.criteria.forEach(criterion => {
@@ -300,7 +301,10 @@ export default class CcSimpleSimulator extends LightningElement {
     });
     this.summaryRows = Object.values(this.summaryMap);
 
-    this.currencySummaryItemSize = Boolean(this.summaryRows && this.summaryRows.length) && 12 / this.summaryRows.length || 1;
+    this.currencySummaryItemSize = Boolean(this.currencySummary && this.currencySummary.length) && 12 / this.currencySummary.length || 1;
+
+    console.log(`currencySummaryItemSize: ${this.currencySummaryItemSize}`);
+    console.log(`this.summaryRows: ${JSON.stringify(this.summaryRows, null, 2)}`);
 
     this.hasSummary = Boolean(this.currencySummary && this.currencySummary.length);
     this.hasOutput = Boolean(this.rows && this.rows.length);
@@ -452,7 +456,7 @@ export default class CcSimpleSimulator extends LightningElement {
     if (output) {
       output.classList.add('slds-hide');
     }
-
+    this.hasOutput = false;
     this.toggleRecordSelectionButton(false);
     this.toggleSimulateButton(true);
   }

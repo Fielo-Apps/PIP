@@ -8,3 +8,7 @@
 .fielo-color-icon .slds-icon-utility-ban svg {
 	fill: rgb(230, 214, 35) !important;
 }
+
+.slds-progress-bar__value {
+	background:rgb(52, 168, 83) !important;
+}

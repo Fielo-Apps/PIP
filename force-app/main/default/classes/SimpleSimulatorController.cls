@@ -308,10 +308,16 @@ public class SimpleSimulatorController {
                                         }
                 },
                 new Map<String, Object> {
-                    'name' =>       (object) 'status',
-                    'fieldName' =>  (object) 'status',
-                    'type' =>       (object) 'text',
-                    'label' =>      (object) 'Status'
+                    'name'              => (object) 'status',
+                    'fieldName'         => (object) 'status',
+                    'type'              => (object) 'text',
+                    'label'             => (object) 'Status',
+                    'cellAttributes'    => (object) new Map<String, Object> {
+                                            'iconName' => new Map<String, String> {
+                                                'fieldName' => 'incentiveEligibleIcon'
+                                            },
+                                            'class' => 'fielo-color-icon'
+                                        }
                 },
                 new Map<String, Object> {
                     'name' =>       (object) 'record',
