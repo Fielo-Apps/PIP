@@ -36,6 +36,20 @@ public class SimpleSimulatorController {
             }
 
             fieldsByObject = SimulatorService.getFieldsMap(criterias);
+            if (fieldsByObject.isEmpty()) {
+                switch on objectName {
+                    when 'Opportunity' {
+                        fieldsByObject.put(objectName, new Set<String>{'Name','Amount','CloseDate','StageName'});
+                    }
+                    when 'Lead' {
+                        fieldsByObject.put(objectName, new Set<String>{'Name','CreatedDate','Status'});
+                    }
+                    when else {
+                        fieldsByObject.put(objectName, new Set<String>{'Id','Name'});
+                    }
+                }
+
+            }
             for(FieloPLT__Action__c action : actions) {
                 if (String.isNotBlank(action.FieloPLT__ConditionField__c) && !fieldsByObject.isEmpty()) {
                     fieldsByObject.get(objectName).add(action.FieloPLT__ConditionField__c);
