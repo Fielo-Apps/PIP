@@ -1,4 +1,4 @@
-<design:component label="Fielo - PIP Simulator  ">
+<design:component label="Fielo - PIP Simulator">
     <design:attribute label="Object" name="objectName" description="Enter the object you want to simulate." default="" datasource="apex://BehaviorObjectsDatasource"/>
     <design:attribute label="Date Field" name="dateField" description="Enter the date field api name you want use to filter the records" default=""/>
 </design:component>

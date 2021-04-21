@@ -6,7 +6,6 @@ import getConfiguration from '@salesforce/apex/SimpleSimulatorController.getConf
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { loadStyle } from "lightning/platformResourceLoader";
 import pipCss from '@salesforce/resourceUrl/pipCss';
-import SystemModstamp from '@salesforce/schema/Account.SystemModstamp';
 
 const recordsPerPage = 10;
 
