@@ -48,7 +48,6 @@ public class SimpleSimulatorController {
                         fieldsByObject.put(objectName, new Set<String>{'Id','Name'});
                     }
                 }
-
             }
             for(FieloPLT__Action__c action : actions) {
                 if (String.isNotBlank(action.FieloPLT__ConditionField__c) && !fieldsByObject.isEmpty()) {
@@ -60,12 +59,26 @@ public class SimpleSimulatorController {
 
                     actionFilters.add(getWhereCondition(JSON.serialize(actionFilter),objectName));
                 }
-                fieldsByObject.get(objectName).add(action.FieloPLT__RuleTrigger__r.FieloPLT__Date__c);
+                if (fieldsByObject.get(objectName) != null) {
+                    fieldsByObject.get(objectName).add(action.FieloPLT__RuleTrigger__r.FieloPLT__Date__c);
+                } else {
+                    fieldsByObject.put(objectName, new Set<String>{action.FieloPLT__RuleTrigger__r.FieloPLT__Date__c});
+                }
             }
         }
 
         if (fieldsByObject.isEmpty()) {
-            fieldsByObject.put(objectName, new Set<String>{'Id','Name'});
+            switch on objectName {
+                when 'Opportunity' {
+                    fieldsByObject.put(objectName, new Set<String>{'Name','Amount','CloseDate','StageName'});
+                }
+                when 'Lead' {
+                    fieldsByObject.put(objectName, new Set<String>{'Name','CreatedDate','Status'});
+                }
+                when else {
+                    fieldsByObject.put(objectName, new Set<String>{'Id','Name'});
+                }
+            }
         }
 
         List<Map<String,Object>> columns = new List<Map<String,Object>>();
