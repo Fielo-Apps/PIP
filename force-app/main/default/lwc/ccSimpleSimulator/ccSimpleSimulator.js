@@ -195,7 +195,7 @@ export default class CcSimpleSimulator extends LightningElement {
       let colRecord = this.config.columns.filter(function (col){return col.fieldName === 'record'})[0];
       this.outputSummaryColumns = [...this.config.columns.filter(function (col){return col.fieldName !== 'record'})];
       let incentiveIndex = this.outputSummaryColumns.map(function(col) {return col.fieldName; }).indexOf('incentive');
-      this.outputSummaryColumns[incentiveIndex].label += ` / ${colRecord.label}`;
+      this.outputSummaryColumns[incentiveIndex].label += ` > ${colRecord.label}`;
 
       if (this.config.dateField) {
         this.filterLabels.from = `${this.config.dateField.label} ${this.filterLabels.from}`;
