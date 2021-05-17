@@ -98,7 +98,8 @@ public class SimpleSimulatorController {
         Set<String> fieldsToAdd = new Set<String>();
         for (String fieldName : fieldsByObject.get(objectName)) {
             if (fieldName != 'FieloPLT__Member__c' && fieldName.containsNone('.')) {
-                fieldDescribe = objectFields.get(fieldName).getDescribe();
+                fieldDescribe = objectFields.get(fieldName)?.getDescribe();
+                if (fieldDescribe == null) continue;
                 fieldType = fieldDescribe.getType().name().toLowerCase();
 
                 col = new Map<String,Object>();
@@ -196,7 +197,7 @@ public class SimpleSimulatorController {
             ' WHERE ' + String.join(new List<String>(whereClauses), ' AND ') +
             ' ORDER BY LastModifiedDate DESC LIMIT ' + recordsPerPage + ' OFFSET ' + offset;
 
-        System.debug('query: ' + query);
+        System.debug('query: ' + query.replace('FROM','\nFROM\n').replace('WHERE','\nWHERE\n'));
 
         return (Object) new Map<String, Object>{
             'columns' => (Object) columns,
