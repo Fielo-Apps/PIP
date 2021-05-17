@@ -1,5 +1,32 @@
 @isTest
 public class TestSimulator {
+
+    @isTest
+    static void testGetConfiguration() {
+
+        FieloPLT__Program__c program = new FieloPLT__Program__c(
+            Name = 'Program',
+            FieloPLT__OnlineTransactionProcessing__c = true,
+            FieloPLT__EnableIncentivesCalculator__c = true
+        );
+
+        insert program;
+
+        FieloPLT__Member__c member = new FieloPLT__Member__c(
+            Name = 'Member A',
+            FieloPLT__Email__c = ('Member A').deleteWhitespace() + Datetime.now().getTime() + '@fielo.com',
+            FieloPLT__Program__c = program.Id,
+            FieloPLT__Type__c = 'Individual Account'
+        );
+        insert member;
+
+        startTest();
+        Map<String,Object> ret = (Map<String,Object>) SimpleSimulatorController.getConfiguration(member.Id, 'FieloPLT__Event__c', 'CreatedDate');
+        Map<String,Object> objectInfo = (Map<String,Object>) ret.get('objectInfo');
+        System.assertEquals('FieloPLT__Event__c', (String) objectInfo.get('name'), 'There is no objectInfo.name equal FieloPLT__Event__c');
+        stopTest();
+    }
+
     @isTest
     static void testSimulate(){
         FieloPLT__Program__c program = new FieloPLT__Program__c(
@@ -199,8 +226,68 @@ public class TestSimulator {
 
         List<Map<String,String>> relatedLists = SimulatorService.getRelatedLists('FieloPLT__Event__c', null);
 
-        Object records = SimpleSimulatorController.getRecords(member.Id, 'FieloPLT__Event__c');
+        Object records = SimpleSimulatorController.getRecords(member.Id, 'FieloPLT__Event__c', '', '10', '0');
     }
+
+    /* @isTest
+    static void testGetRecords_Opp() {
+        FieloPLT__Program__c program = new FieloPLT__Program__c(
+            Name = 'Program',
+            FieloPLT__OnlineTransactionProcessing__c = true,
+            FieloPLT__EnableIncentivesCalculator__c = true
+        );
+
+        insert program;
+
+        FieloPLT__Member__c member = new FieloPLT__Member__c(
+            Name = 'Member A',
+            FieloPLT__Email__c = ('Member A').deleteWhitespace() + Datetime.now().getTime() + '@fielo.com',
+            FieloPLT__Program__c = program.Id,
+            FieloPLT__Type__c = 'Individual Account'
+        );
+        insert member;
+
+        FieloPLT__Triggers__c triggers = FieloPLT__Triggers__c.getInstance(UserInfo.getUserId());
+        triggers.FieloPLT__Criterion__c = false;
+        triggers.FieloPLT__Action__c = false;
+        triggers.FieloPLT__RuleTrigger__c = false;
+        upsert triggers;
+
+        FieloPLT__RuleTrigger__c rt = new FieloPLT__RuleTrigger__c(
+			Name = 'Opportunity',
+			FieloPLT__Object__c = 'Opportunity',
+			FieloPLT__ConditionField__c = 'Stage',
+			FieloPLT__ConditionValue__c = 'Closed Won',
+			FieloPLT__Date__c = 'ClosedDate',
+			FieloPLT__Prefix__c = ((sObject)Type.forName('Opportunity').newInstance()).getSObjectType().getDescribe().getKeyPrefix(),
+			FieloPLT__ExternalId__c = guid(),
+			FieloPLT__Status__c = 'Active'
+		);
+        insert rt;
+
+        Map<String,CriteriaWrapper> criteriasMapByObject = new Map<String,CriteriaWrapper>();
+        criteriasMapByObject.put('rules', new CriteriaWrapper());
+        criteriasMapByObject.get('rules').fieldsByObject = new Map<String,Set<String>>{
+            'Opportunity' => new Set<String>(Schema.SObjectType.Opportunity.fields.getMap().keySet())
+        };
+
+        FieloPLT__Action__c action = new FieloPLT__Action__c(
+            Name = 'Generate Event And Win',
+			FieloPLT__TargetMember__c = 'FieloPLT__Member__c',
+			FieloPLT__RuleTrigger__c = rt.Id,
+			FieloPLT__ConditionField__c = 'Stage',
+			FieloPLT__ConditionValue__c = 'Closed Won',
+			FieloPLT__ExternalId__c = guid()
+		);
+        insert action;
+
+        update new FieloPLT__Action__c (
+            Id = action.Id,
+            FieloPLT__CriteriaFields__c = JSON.serialize(criteriasMapByObject)
+        );
+
+        Object records = SimpleSimulatorController.getRecords(member.Id, 'Opportunity', '', '10', '0');
+    } */
 
     @isTest
     static void getWiredRecords() {
@@ -317,8 +404,24 @@ public class TestSimulator {
         whereCondition = SimulatorService.getWhereCondition(
             JSON.serialize(
                 new Map<String,String>{
-                    'FieloPLT__Value__c' => 'FROM:0TO:100',
-                    'FieloPLT__Value__c' => 'FROM:0',
+                    'FieloPLT__Value__c' => 'FROM:0'
+                }
+            ),
+            'FieloPLT__Event__c'
+        );
+
+        whereCondition = SimulatorService.getWhereCondition(
+            JSON.serialize(
+                new Map<String,String>{
+                    'FieloPLT__Value__c' => 'FROM:0TO:100'
+                }
+            ),
+            'FieloPLT__Event__c'
+        );
+
+        whereCondition = SimulatorService.getWhereCondition(
+            JSON.serialize(
+                new Map<String,String>{
                     'FieloPLT__Value__c' => 'IN:1,2,3'
                 }
             ),
@@ -328,7 +431,16 @@ public class TestSimulator {
         whereCondition = SimulatorService.getWhereCondition(
             JSON.serialize(
                 new Map<String,String>{
-                    'FieloPLT__Date__c' => '2021-01-01TO:2021-02-01'
+                    'FieloPLT__EventDate__c' => 'TO:2021-02-01'
+                }
+            ),
+            'FieloPLT__Event__c'
+        );
+
+        whereCondition = SimulatorService.getWhereCondition(
+            JSON.serialize(
+                new Map<String,String>{
+                    'FieloPLT__EventDate__c' => 'FROM:2021-01-01TO:2021-02-01'
                 }
             ),
             'FieloPLT__Event__c'

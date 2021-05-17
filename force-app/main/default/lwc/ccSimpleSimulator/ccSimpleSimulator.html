@@ -1,0 +1,115 @@
+<template>
+
+    <lightning-layout class="slds-p-around_x-medium">
+        <lightning-layout-item size="7" class="slds-p-horizontal_medium slds-p-top_small">
+            <div class="slds-text-heading_large">
+                <b>Incentives Calculator</b>
+            </div>
+            <div class="slds-text-heading_small">
+                Incentives Calculator is based on revenue objectives.<br/>
+                By default all objectives are selected. You can unselect and recalculate your payout.
+            </div>
+        </lightning-layout-item>
+        <lightning-layout-item size="5" class="slds-p-horizontal_medium slds-p-top_small">
+            <template if:true={hasOutput}>
+                <lightning-card class="fielo-output-summary">
+                    <lightning-layout class="slds-p-around_x-medium" horizontal-align="spread" vertical-align="start">
+                        <template for:each={currencySummary} for:item="currency" for:index="index">
+                            <lightning-layout-item key={currency.name} size={currencySummaryItemSize} class="slds-p-horizontal_medium">
+                                <div class="slds-text-title_caps slds-text-color_default slds-size_1-of-1"><b>{currency.name}</b></div>
+                                <div class="slds-text-color_default slds-size_1-of-1"><b>Remaining Potential</b></div>
+                                <div class="slds-text-heading_medium slds-size_1-of-1 slds-p-bottom_medium">
+                                    <lightning-formatted-number value={currency.remaining} format-style="currency" currency-code="USD"></lightning-formatted-number>
+                                </div>
+                                <lightning-progress-bar class="slds-progress-bar__value_success" value={currency.percent} size="small"></lightning-progress-bar>
+                                <lightning-layout class="slds-p-around_x-medium" horizontal-align="spread" vertical-align="start">
+                                    <lightning-layout-item>
+                                        <lightning-formatted-number value={currency.amount} format-style="currency" currency-code="USD"></lightning-formatted-number>
+                                        &nbsp;eligible
+                                    </lightning-layout-item>
+                                    <lightning-layout-item>
+                                        <lightning-formatted-number value={currency.maximum} format-style="currency" currency-code="USD"></lightning-formatted-number>
+                                    </lightning-layout-item>
+                                </lightning-layout>
+                            </lightning-layout-item>
+                        </template>
+                    </lightning-layout>
+                </lightning-card>
+            </template>
+        </lightning-layout-item>
+    </lightning-layout>
+
+    <lightning-layout class="slds-p-around_x-medium">
+        <lightning-layout-item class="slds-p-horizontal_medium slds-p-top_small">
+            <lightning-input class="fielo-filter__from" type="date" name="from" label={filterLabels.from} date-style="short" onchange={handleInputFilterChange}></lightning-input>
+        </lightning-layout-item>
+        <lightning-layout-item class="slds-p-horizontal_medium slds-p-top_small">
+            <lightning-input class="fielo-filter__to" type="date" name="to" label={filterLabels.to} date-style="short" onchange={handleInputFilterChange}></lightning-input>
+        </lightning-layout-item>
+        <lightning-layout-item class="slds-p-horizontal_medium slds-p-top_small fielo-filter__button-container">
+            <lightning-button class="slds-m-left_x-small fielo-filter-button" variant="brand" label="Filter" title="Successful action" onclick={handleFilter} ></lightning-button>
+        </lightning-layout-item>
+    </lightning-layout>
+
+    <div class="slds-var-m-around_medium fielo-buttons-container">
+        <lightning-layout class="slds-size_1-of-1" horizontal-align="spread">
+            <lightning-layout-item size="3" class="slds-p-top_small slds-p-bottom_medium">
+                <lightning-button class="slds-hide slds-m-left_x-small fielo-simulate-button" variant="brand" label="Update outcomes" title="Successful action" onclick={handleSimulate} ></lightning-button>
+                <lightning-button class="slds-hide slds-m-left_x-small fielo-select-records-button" variant="neutral" label={label.selectRecords} title="Successful action" onclick={handleSelectRecords}></lightning-button>
+            </lightning-layout-item>
+            <lightning-layout-item class="slds-hide slds-p-top_small slds-p-bottom_medium fielo-output-uex-switch">
+                <lightning-button-icon-stateful icon-name="utility:summary" selected={isSummaryOutput} onclick={handleSummaryClick} alternative-text="Like"></lightning-button-icon-stateful>
+                <lightning-button-icon-stateful icon-name="utility:table" selected={isTableOutput} onclick={handleTableClick} alternative-text="Answer" class="slds-m-left_xx-small"></lightning-button-icon-stateful>
+            </lightning-layout-item>
+        </lightning-layout>
+    </div>
+
+    <template if:true={hasRecords}>
+        <div class="slds-var-m-around_medium fielo-records-to-simulate">
+            <div class="slds-p-top_small slds-p-bottom_medium slds-text-heading_small">
+            {label.selectTheRecords}
+            </div>
+            <lightning-datatable class="fielo-records-table" data={relatedRecords} columns={relatedColumns} key-field="Id"
+                onrowselection={handleSelectedRecord} selected-rows={selectedRowsIds}></lightning-datatable>
+            <lightning-layout horizontal-align="spread" class="fielosf-list__paginator slds-m-bottom--large">
+                    <lightning-layout-item padding="around-small">
+                        <lightning-button label="Previous" onclick={handlePrevious} disabled={disablePrevious}></lightning-button>
+                    </lightning-layout-item>
+                    <lightning-layout-item padding="around-medium">
+                        {selectedPaginatorText}
+                    </lightning-layout-item>
+                    <lightning-layout-item padding="around-small">
+                        <lightning-button label="Next" onclick={handleNext} disabled={disableNext}></lightning-button>
+                    </lightning-layout-item>
+                </lightning-layout>
+        </div>
+    </template>
+
+    <template if:false={hasRecords}>
+        <div class="slds-var-m-around_medium fielo-records-to-simulate">
+            <div class="slds-p-top_small slds-p-bottom_medium slds-text-heading_small">
+            No records to display
+            </div>
+        </div>
+    </template>
+
+    <template if:true={hasOutput}>
+        <div class="slds-var-m-around_medium fielo-records-outcome">
+            <div class="slds-p-top_small slds-p-bottom_medium slds-text-heading_small">
+                Outcomes:
+            </div>
+            <div class="slds-var-m-around_medium fielo-simulation-result slds-size_1-of-1">
+                <template if:true={isTableOutput}>
+                    <lightning-datatable class="fielo-output-as-table" data={rows} columns={outputTableColumns} key-field="Id" ></lightning-datatable>
+                </template>
+                <template if:true={isSummaryOutput}>
+                    <lightning-tree-grid class="fielo-output-as-summary" columns={outputSummaryColumns} data={summaryRows} expanded-rows={expandedRows} key-field="id" ></lightning-tree-grid>
+                </template>
+            </div>
+        </div>
+    </template>
+
+    <template if:true={showSpinner}>
+        <lightning-spinner alternative-text="Loading" size="large"></lightning-spinner>
+    </template>
+</template>

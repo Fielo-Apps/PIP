@@ -44,6 +44,12 @@
                         </div>
                     </template>
                 </template>
+
+                <template if:false={hasRecords}>
+                    <div class="slds-var-m-around_medium">
+                        No records found
+                    </div>
+                </template>
             </template>
         </template>
 

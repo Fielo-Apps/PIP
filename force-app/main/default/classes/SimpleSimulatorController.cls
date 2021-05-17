@@ -8,33 +8,77 @@ public class SimpleSimulatorController {
     }
 
     @AuraEnabled
-    public static Object getRecords(String memberId, String objectName){
+    public static Object getRecords(String memberId, String objectName, String jsonFilter, String recordsPerPage, String offset){
 
         List<FieloPLT__Action__c> actions = (List<FieloPLT__Action__c>) Database.query(
-            'SELECT Id, FieloPLT__CriteriaFields__c FROM FieloPLT__Action__c WHERE FieloPLT__RuleTrigger__r.FieloPLT__Object__c = :objectName'
+            'SELECT Id, FieloPLT__CriteriaFields__c, FieloPLT__ConditionField__c, FieloPLT__ConditionValue__c, FieloPLT__ConditionType__c, FieloPLT__RuleTrigger__r.FieloPLT__Date__c FROM FieloPLT__Action__c WHERE FieloPLT__RuleTrigger__r.FieloPLT__Object__c = :objectName'
         );
 
+        List<String> actionFilters = new List<String>();
 
         Set<String> fields = new Set<String>{'Id','Name'};
         List<SimulatorService.CriteriaWrapper> criterias = new List<SimulatorService.CriteriaWrapper>();
         Map<String,SimulatorService.CriteriaWrapper> criteriasMetaDataMap;
         Map<String,Set<String>> fieldsByObject = new Map<String,Set<String>>();
+        Map<String,Object> actionFilter = new Map<String,Object>();
+
         if (!actions.isEmpty()) {
             for(FieloPLT__Action__c action : actions) {
-                criteriasMetaDataMap = (Map<String,SimulatorService.CriteriaWrapper>)JSON.deserialize(action.FieloPLT__CriteriaFields__c, Map<String,SimulatorService.CriteriaWrapper>.class);
+                if (String.isNotBlank(action.FieloPLT__CriteriaFields__c)) {
+                    criteriasMetaDataMap = (Map<String,SimulatorService.CriteriaWrapper>)JSON.deserialize(action.FieloPLT__CriteriaFields__c, Map<String,SimulatorService.CriteriaWrapper>.class);
 
-                if(criteriasMetaDataMap.containsKey('rules'))
-                    criterias.add(criteriasMetaDataMap.get('rules'));
+                    if(criteriasMetaDataMap.containsKey('rules'))
+                        criterias.add(criteriasMetaDataMap.get('rules'));
 
-                if(criteriasMetaDataMap.containsKey('missions'))
-                    criterias.add(criteriasMetaDataMap.get('missions'));
+                    if(criteriasMetaDataMap.containsKey('missions'))
+                        criterias.add(criteriasMetaDataMap.get('missions'));
+                }
             }
 
             fieldsByObject = SimulatorService.getFieldsMap(criterias);
+            if (fieldsByObject.isEmpty()) {
+                switch on objectName {
+                    when 'Opportunity' {
+                        fieldsByObject.put(objectName, new Set<String>{'Name','Amount','CloseDate','StageName'});
+                    }
+                    when 'Lead' {
+                        fieldsByObject.put(objectName, new Set<String>{'Name','CreatedDate','Status'});
+                    }
+                    when else {
+                        fieldsByObject.put(objectName, new Set<String>{'Id','Name'});
+                    }
+                }
+            }
+            for(FieloPLT__Action__c action : actions) {
+                if (String.isNotBlank(action.FieloPLT__ConditionField__c) && !fieldsByObject.isEmpty()) {
+                    fieldsByObject.get(objectName).add(action.FieloPLT__ConditionField__c);
+
+                    actionFilter = new Map<String,Object>{
+                        action.FieloPLT__ConditionField__c => (Object) '!' + action.FieloPLT__ConditionValue__c
+                    };
+
+                    actionFilters.add(SimulatorService.getWhereCondition(JSON.serialize(actionFilter),objectName));
+                }
+                if (fieldsByObject.get(objectName) != null) {
+                    fieldsByObject.get(objectName).add(action.FieloPLT__RuleTrigger__r.FieloPLT__Date__c);
+                } else {
+                    fieldsByObject.put(objectName, new Set<String>{action.FieloPLT__RuleTrigger__r.FieloPLT__Date__c});
+                }
+            }
         }
 
         if (fieldsByObject.isEmpty()) {
-            fieldsByObject.put(objectName, new Set<String>{'Id','Name'});
+            switch on objectName {
+                when 'Opportunity' {
+                    fieldsByObject.put(objectName, new Set<String>{'Name','Amount','CloseDate','StageName'});
+                }
+                when 'Lead' {
+                    fieldsByObject.put(objectName, new Set<String>{'Name','CreatedDate','Status'});
+                }
+                when else {
+                    fieldsByObject.put(objectName, new Set<String>{'Id','Name'});
+                }
+            }
         }
 
         List<Map<String,Object>> columns = new List<Map<String,Object>>();
@@ -43,7 +87,7 @@ public class SimpleSimulatorController {
 
         Set<String> memberFilter = new Set<String>();
         for (SObjectField fieldToken : objectFields.values()) {
-            if(fieldToken.getDescribe().getType().name().toLowerCase() == 'reference' && fieldToken.getDescribe().getReferenceTo().get(0).getDescribe().getName() == 'FieloPLT__Member__c') {
+            if(fieldToken.getDescribe().getType().name().toLowerCase() == 'reference' && fieldToken.getDescribe().getReferenceTo()?.get(0).getDescribe().getName() == 'FieloPLT__Member__c') {
                 memberFilter.add(fieldToken.getDescribe().getName() + ' = :memberId');
             }
         }
@@ -54,7 +98,8 @@ public class SimpleSimulatorController {
         Set<String> fieldsToAdd = new Set<String>();
         for (String fieldName : fieldsByObject.get(objectName)) {
             if (fieldName != 'FieloPLT__Member__c' && fieldName.containsNone('.')) {
-                fieldDescribe = objectFields.get(fieldName).getDescribe();
+                fieldDescribe = objectFields.get(fieldName)?.getDescribe();
+                if (fieldDescribe == null) continue;
                 fieldType = fieldDescribe.getType().name().toLowerCase();
 
                 col = new Map<String,Object>();
@@ -71,6 +116,7 @@ public class SimpleSimulatorController {
                 switch on fieldType {
                     when 'text' {
                         col.put('type', (Object) 'text');
+                        col.put('wrapText', (Object) true);
                     }
                     when 'percent' {
                         col.put('type', (Object) 'percent');
@@ -135,9 +181,29 @@ public class SimpleSimulatorController {
 
         fields = SimulatorService.deleteDuplicateFields(fields);
 
+        List<String> whereClauses = new List<String>{'(' + String.join(new List<String>(memberFilter), ' OR ') + ')'};
+
+        if (!actionFilters.isEmpty()) {
+            whereClauses.add('(' + String.join(new List<String>(actionFilters), ' OR ') + ')');
+        }
+
+        if (String.isNotBlank(jsonFilter)) {
+            whereClauses.add(SimulatorService.getWhereCondition(jsonFilter,objectName));
+        }
+
+        String query = 'SELECT ' +
+            String.join(new List<String>(fields), ', ') +
+            ' FROM ' + objectName +
+            ' WHERE ' + String.join(new List<String>(whereClauses), ' AND ') +
+            ' ORDER BY LastModifiedDate DESC' +
+            (recordsPerPage == null ? '' : ' LIMIT '+recordsPerPage) +
+            (offset == null ? '' : ' OFFSET '+offset);
+
+        System.debug('query='+query);
+
         return (Object) new Map<String, Object>{
             'columns' => (Object) columns,
-            'records' => (Object) Database.query('SELECT ' + String.join(new List<String>(fields), ', ') + ' FROM ' + objectName + ' WHERE ' + String.join(new List<String>(memberFilter), ' OR ') + ' LIMIT 10')
+            'records' => (Object) Database.query(query)
         };
     }
 
@@ -199,6 +265,105 @@ public class SimpleSimulatorController {
             }
 
             return (Object) translatedIds;
+        } catch (Exception e) {
+            throw new AuraHandledException(e.getMessage());
+        }
+    }
+
+    @AuraEnabled
+    public static Object getConfiguration(String memberId, String objectName, String dateField){
+        try {
+            Map<String, Object> fieloConfig = new Map<String, Object>();
+
+            Map<String,String> objectInfo = new Map<String,String>();
+
+            DescribeSObjectResult objDescribe = ((sObject)Type.forName(objectName).newInstance()).getSObjectType().getDescribe();
+
+            objectInfo.put('name', objDescribe.getName());
+            objectInfo.put('label', objDescribe.getLabel());
+            objectInfo.put('labelPlural', objDescribe.getLabelPlural());
+
+            Map<String,String> dateFieldInfo = new Map<String,String>();
+
+            DescribeFieldResult fieldDesc = objDescribe.fields.getMap().get(dateField).getDescribe();
+
+            dateFieldInfo.put('name',fieldDesc.getName());
+            dateFieldInfo.put('label',fieldDesc.getLabel());
+            dateFieldInfo.put('type',fieldDesc.getType().name());
+
+            fieloConfig.put('dateField', (object) dateFieldInfo);
+            fieloConfig.put('objectInfo', (object) objectInfo);
+
+            FieloPLT__Member__c member = [SELECT Id, FieloPLT__Program__c FROM FieloPLT__Member__c WHERE Id = :memberId];
+
+            Map<String,Object> currencies = new Map<String,Object>();
+            for(FieloPLT__ProgramPointType__c ppt : [SELECT Id, FieloPLT__PointType__r.Name, FieloPLT__PointType__r.FieloPLT__DecimalsNumber__c FROM FieloPLT__ProgramPointType__c WHERE FieloPLT__Program__c = :member.FieloPLT__Program__c]) {
+                currencies.put(ppt.FieloPLT__PointType__r.Name, (Object) ppt.FieloPLT__PointType__r.FieloPLT__DecimalsNumber__c);
+            }
+            fieloConfig.put('currencies', (Object) currencies);
+
+            List<Map<String,Object>> columns = new List<Map<String,Object>>{
+                new Map<String, Object> {
+                    'name' =>       (object) 'incentive',
+                    'fieldName' =>  (object) 'incentive',
+                    'type' =>       (object) 'text',
+                    'label' =>      (object) 'Incentive',
+                    'wrapText' =>   (object) true
+                },
+                new Map<String, Object> {
+                    'name'              => (object) 'eligibility',
+                    'fieldName'         => (object) 'eligibility',
+                    'type'              => (object) 'text',
+                    'label'             => (object) 'Eligibility Criteria to Meet',
+                    'wrapText'          => (object) true,
+                    'cellAttributes'    => (object) new Map<String, Object> {
+                                            'iconName' => new Map<String, String> {
+                                                'fieldName' => 'eligibleIcon'
+                                            },
+                                            'class' => 'fielo-color-icon'
+                                        }
+                },
+                new Map<String, Object> {
+                    'name'              => (object) 'status',
+                    'fieldName'         => (object) 'status',
+                    'type'              => (object) 'text',
+                    'label'             => (object) 'Status',
+                    'cellAttributes'    => (object) new Map<String, Object> {
+                                            'iconName' => new Map<String, String> {
+                                                'fieldName' => 'incentiveEligibleIcon'
+                                            },
+                                            'class' => 'fielo-color-icon'
+                                        }
+                },
+                new Map<String, Object> {
+                    'name' =>       (object) 'record',
+                    'fieldName' =>  (object) 'record',
+                    'type' =>       (object) 'text',
+                    'label' =>      (object) objDescribe.getLabel(),
+                    'wrapText' =>   (object) true
+                }
+            };
+
+            for (String name : currencies.keySet()) {
+                columns.add(
+                    new Map<String, Object> {
+                        'name' =>           (object) name,
+                        'fieldName' =>      (object) name,
+                        'type' =>           (object) 'number',
+                        'label' =>          (object) name,
+                        'typeAttributes' => (object) new Map<String, String>{
+                                                'minimumFractionDigits' => String.valueOf(currencies.get(name))
+                                            },
+                        'cellAttributes' => (object) new Map<String, String>{
+                                                'alignment' => 'left'
+                                            }
+                    }
+                );
+            }
+
+            fieloConfig.put('columns', columns);
+
+            return fieloConfig;
         } catch (Exception e) {
             throw new AuraHandledException(e.getMessage());
         }
