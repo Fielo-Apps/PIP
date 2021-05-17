@@ -202,7 +202,7 @@ public class TestSimulator {
         Object records = SimpleSimulatorController.getRecords(member.Id, 'FieloPLT__Event__c', '', '10', '0');
     }
 
-    @isTest
+    /* @isTest
     static void testGetRecords_Opp() {
         FieloPLT__Program__c program = new FieloPLT__Program__c(
             Name = 'Program',
@@ -260,7 +260,7 @@ public class TestSimulator {
         );
 
         Object records = SimpleSimulatorController.getRecords(member.Id, 'Opportunity', '', '10', '0');
-    }
+    } */
 
     @isTest
     static void getWiredRecords() {
