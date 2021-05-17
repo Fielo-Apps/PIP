@@ -92,10 +92,6 @@ export default class BSimpleSimulator extends LightningElement {
         }.bind(this))
 
         this.hasRecords = this.relatedRecords && this.relatedRecords.length;
-
-        console.log(
-          JSON.stringify(this.relatedColumns, null, 2)
-        )
       })
       .catch(error => {
         console.error(error)
