@@ -1,32 +1,5 @@
 @isTest
 public class TestSimulator {
-
-    @isTest
-    static void testGetConfiguration() {
-
-        FieloPLT__Program__c program = new FieloPLT__Program__c(
-            Name = 'Program',
-            FieloPLT__OnlineTransactionProcessing__c = true,
-            FieloPLT__EnableIncentivesCalculator__c = true
-        );
-
-        insert program;
-
-        FieloPLT__Member__c member = new FieloPLT__Member__c(
-            Name = 'Member A',
-            FieloPLT__Email__c = ('Member A').deleteWhitespace() + Datetime.now().getTime() + '@fielo.com',
-            FieloPLT__Program__c = program.Id,
-            FieloPLT__Type__c = 'Individual Account'
-        );
-        insert member;
-
-        startTest();
-        Map<String,Object> ret = (Map<String,Object>) SimpleSimulatorController.getConfiguration(member.Id, 'FieloPLT__Event__c', 'CreatedDate');
-        Map<String,Object> objectInfo = (Map<String,Object>) ret.get('objectInfo');
-        System.assertEquals('FieloPLT__Event__c', (String) objectInfo.get('name'), 'There is no objectInfo.name equal FieloPLT__Event__c');
-        stopTest();
-    }
-
     @isTest
     static void testSimulate(){
         FieloPLT__Program__c program = new FieloPLT__Program__c(
@@ -404,24 +377,8 @@ public class TestSimulator {
         whereCondition = SimulatorService.getWhereCondition(
             JSON.serialize(
                 new Map<String,String>{
-                    'FieloPLT__Value__c' => 'FROM:0'
-                }
-            ),
-            'FieloPLT__Event__c'
-        );
-
-        whereCondition = SimulatorService.getWhereCondition(
-            JSON.serialize(
-                new Map<String,String>{
-                    'FieloPLT__Value__c' => 'FROM:0TO:100'
-                }
-            ),
-            'FieloPLT__Event__c'
-        );
-
-        whereCondition = SimulatorService.getWhereCondition(
-            JSON.serialize(
-                new Map<String,String>{
+                    'FieloPLT__Value__c' => 'FROM:0TO:100',
+                    'FieloPLT__Value__c' => 'FROM:0',
                     'FieloPLT__Value__c' => 'IN:1,2,3'
                 }
             ),
@@ -431,16 +388,7 @@ public class TestSimulator {
         whereCondition = SimulatorService.getWhereCondition(
             JSON.serialize(
                 new Map<String,String>{
-                    'FieloPLT__EventDate__c' => 'TO:2021-02-01'
-                }
-            ),
-            'FieloPLT__Event__c'
-        );
-
-        whereCondition = SimulatorService.getWhereCondition(
-            JSON.serialize(
-                new Map<String,String>{
-                    'FieloPLT__EventDate__c' => 'FROM:2021-01-01TO:2021-02-01'
+                    'FieloPLT__Date__c' => '2021-01-01TO:2021-02-01'
                 }
             ),
             'FieloPLT__Event__c'

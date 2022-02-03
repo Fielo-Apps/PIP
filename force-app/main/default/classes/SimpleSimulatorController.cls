@@ -10,6 +10,14 @@ public class SimpleSimulatorController {
     @AuraEnabled
     public static Object getRecords(String memberId, String objectName, String jsonFilter, String recordsPerPage, String offset){
 
+        if (String.isBlank(recordsPerPage)) {
+            recordsPerPage = '10';
+        }
+
+        if (String.isBlank(offset)) {
+            offset = '0';
+        }
+
         List<FieloPLT__Action__c> actions = (List<FieloPLT__Action__c>) Database.query(
             'SELECT Id, FieloPLT__CriteriaFields__c, FieloPLT__ConditionField__c, FieloPLT__ConditionValue__c, FieloPLT__ConditionType__c, FieloPLT__RuleTrigger__r.FieloPLT__Date__c, FieloPLT__RuleTrigger__r.FieloPLT__Object__c FROM FieloPLT__Action__c WHERE FieloPLT__RuleTrigger__r.FieloPLT__Object__c = :objectName'
         );
@@ -66,8 +74,7 @@ public class SimpleSimulatorController {
                         };
                     }
 
-
-                    actionFilters.add(SimulatorService.getWhereCondition(JSON.serialize(actionFilter),objectName));
+                    actionFilters.add(getWhereCondition(JSON.serialize(actionFilter),objectName));
                 }
                 if (fieldsByObject.get(objectName) != null) {
                     fieldsByObject.get(objectName).add(action.FieloPLT__RuleTrigger__r.FieloPLT__Date__c);
@@ -97,7 +104,7 @@ public class SimpleSimulatorController {
 
         Set<String> memberFilter = new Set<String>();
         for (SObjectField fieldToken : objectFields.values()) {
-            if(fieldToken.getDescribe().getType().name().toLowerCase() == 'reference' && fieldToken.getDescribe().getReferenceTo()?.get(0).getDescribe().getName() == 'FieloPLT__Member__c') {
+            if(fieldToken.getDescribe().getType().name().toLowerCase() == 'reference' && fieldToken.getDescribe().getReferenceTo().get(0).getDescribe().getName() == 'FieloPLT__Member__c') {
                 memberFilter.add(fieldToken.getDescribe().getName() + ' = :memberId');
             }
         }
@@ -198,18 +205,16 @@ public class SimpleSimulatorController {
         }
 
         if (String.isNotBlank(jsonFilter)) {
-            whereClauses.add(SimulatorService.getWhereCondition(jsonFilter,objectName));
+            whereClauses.add(getWhereCondition(jsonFilter,objectName));
         }
 
         String query = 'SELECT ' +
             String.join(new List<String>(fields), ', ') +
             ' FROM ' + objectName +
             ' WHERE ' + String.join(new List<String>(whereClauses), ' AND ') +
-            ' ORDER BY LastModifiedDate DESC' +
-            (recordsPerPage == null ? '' : ' LIMIT '+recordsPerPage) +
-            (offset == null ? '' : ' OFFSET '+offset);
+            ' ORDER BY LastModifiedDate DESC LIMIT ' + recordsPerPage + ' OFFSET ' + offset;
 
-        System.debug('query='+query);
+        System.debug('query: ' + query.replace('FROM','\nFROM\n').replace('WHERE','\nWHERE\n'));
 
         return (Object) new Map<String, Object>{
             'columns' => (Object) columns,
@@ -220,6 +225,29 @@ public class SimpleSimulatorController {
     @AuraEnabled
     public static String simulate(String memberId, List<SObject> records){
         return JSON.serializePretty(FieloPLT.SimulationAPI.simulateRewarding(records, Id.valueOf(memberId), false));
+    }
+
+    @AuraEnabled
+    public static object simulateAsync(String memberId, List<SObject> records){
+        SimulationRequest__e payload = new SimulationRequest__e(
+            Member__c = memberId,
+            Records__c = JSON.serialize(records)
+        );
+
+        // Call method to publish events
+        Database.SaveResult result = EventBus.publish(payload);
+        String uuid = '';
+
+        // Inspect publishing result for each event
+        if (!result.isSuccess()) {
+            ErrorService.insertErrors(result.getErrors());
+        } else {
+            uuid = EventBus.getOperationId(result);
+        }
+        return new Map<String, Object>{
+            'payload' =>    (object) payload,
+            'UUID' =>       (object) uuid
+        };
     }
 
     @AuraEnabled
@@ -377,5 +405,121 @@ public class SimpleSimulatorController {
         } catch (Exception e) {
             throw new AuraHandledException(e.getMessage());
         }
+    }
+
+    private static string getWhereCondition(String filterJson, String objectName) {
+        Map<String, Schema.SObjectField> objectFields = ((sObject)Type.forName(objectName).newInstance()).getSObjectType().getDescribe().fields.getMap();
+
+        List<String> conditions = new List<String>();
+        List<String> innerConditions = new List<String>();
+        if (String.isNotBlank(filterJson) && filterJson != null ) {
+            Map<String,Object> filter = (Map<String, Object>) JSON.deserializeUntyped( filterJson);
+            for ( String k :filter.keySet() ) {
+                String whereCondition = '';
+                String value = string.valueOf(filter.get(k));
+                if (value == null || value == 'null') {
+                    whereCondition = String.escapeSingleQuotes(k) + ' = null';
+                } else if(value.toLowerCase() == '!null') {
+                    whereCondition = String.escapeSingleQuotes(k) + ' != null';
+                } else {
+                    if(value.startsWith('BOOLEAN:')){
+                            whereCondition = String.escapeSingleQuotes(k) + ' = ' +  String.escapeSingleQuotes(value.removeStart('BOOLEAN:'));
+                    } else if(value.startsWith('LIKE:')){
+                            if (objectName.toLowerCase() == 'fieloplt__member__c' && String.escapeSingleQuotes(k).toLowerCase() == 'name') {
+                                whereCondition = '(' + String.escapeSingleQuotes(k) + ' LIKE \'%' +  String.escapeSingleQuotes(value.removeStart('LIKE:')) + '%\'' +
+                                ' OR FieloPLT__Email__c LIKE \'%' +  String.escapeSingleQuotes(value.removeStart('LIKE:')) + '%\') ';
+                            } else {
+                                whereCondition = String.escapeSingleQuotes(k) + ' LIKE \'%' +  String.escapeSingleQuotes(value.removeStart('LIKE:')) + '%\'';
+                            }
+                    } else if ( value.startsWith('!') ) {
+                            whereCondition = String.escapeSingleQuotes(k) + ' <> \'' +  String.escapeSingleQuotes(value.substring(1)) + '\'';
+                    } else if ( value.startsWith('IN:') ) {
+                            string value2 = value.removeStart('IN:');
+                            List<String> ids = new List<String>();
+
+                            for(String str: value2.split(',')){
+                                string strc = '\'' + str  + '\'';
+                                ids.add(strc);
+                            }
+                            whereCondition += String.escapeSingleQuotes(k) + ' IN ' + ids;
+                    } else if ( value.startsWith('FROM:') ) {
+                        value = value.removeStart('FROM:');
+
+                        if (objectFields.get(k).getDescribe().getSOAPType().name().tolowercase() == 'double') {
+                            List<String> numbers = new List<String>();
+
+                            if (value.contains('TO:')) {
+                                numbers = value.split('TO:');
+                            } else {
+                                numbers.add(value);
+                            }
+
+                            innerConditions = new List<String>();
+                            for (Integer i = 0; i < numbers.size(); i++) {
+                                whereCondition = String.escapeSingleQuotes(k);
+                                if (i == 0) {
+                                    // FROM
+                                    whereCondition += ' >= ';
+                                } else {
+                                    // TO
+                                    whereCondition += ' <= ';
+                                }
+                                whereCondition += numbers[i];
+                                innerConditions.add(whereCondition);
+                            }
+                            whereCondition = String.join(innerConditions, ' AND ');
+                        } else {
+                            Date tempDate = Date.today();
+                            DateTime tempDateTime = DateTime.newInstance(0);
+                            List<String> dates = new List<String>();
+
+                            if (value.contains('TO:')) {
+                                dates = value.split('TO:');
+                            } else {
+                                dates.add(value);
+                            }
+
+                            innerConditions = new List<String>();
+                            for (Integer i = 0; i < dates.size(); i++) {
+                                tempDate = Date.valueOf(dates[i]);
+                                tempDateTime = DateTime.newInstance(tempDate.year(), tempDate.month(), tempDate.day());
+
+                                whereCondition = String.escapeSingleQuotes(k);
+                                if (i == 0) {
+                                    // FROM
+                                    whereCondition += ' >= ';
+                                } else {
+                                    // TO
+                                    whereCondition += ' <= ';
+                                }
+                                if (objectFields.get(k).getDescribe().getType().name().tolowercase() == 'datetime') {
+                                    whereCondition += tempDateTime.format('yyyy-MM-dd\'T00:00:00Z\'');
+                                } else {
+                                    whereCondition += tempDateTime.format('yyyy-MM-dd');
+                                }
+                                innerConditions.add(whereCondition);
+                            }
+                            whereCondition = String.join(innerConditions, ' AND ');
+                        }
+                    } else if ( value.startsWith('TO:') ) {
+                        Date tempDate = Date.valueOf(value.removeStart('TO:'));
+                        DateTime tempDateTime = DateTime.newInstance(tempDate.year(), tempDate.month(), tempDate.day());
+
+                        whereCondition = String.escapeSingleQuotes(k) + ' <= ' + tempDateTime.format('yyyy-MM-dd\'T00:00:00Z\'') ;
+                    } else if ( objectName.tolowercase() == 'FieloPLT__Reward__c' && k.tolowercase() == 'fieloplt__program__c'){
+                            whereCondition = '( ' +
+                                String.escapeSingleQuotes(k) + ' = \'' +  String.escapeSingleQuotes(value) + '\' OR ' +
+                                String.escapeSingleQuotes(k) + ' = null ' +
+                                ')';
+                    } else {
+                            whereCondition = String.escapeSingleQuotes(k) + ' = \'' +  String.escapeSingleQuotes(value) + '\'';
+                    }
+                }
+                if (String.isNotBlank(whereCondition)) {
+                    conditions.add(whereCondition);
+                }
+            }
+        }
+        return String.join(conditions, ' AND ');
     }
 }

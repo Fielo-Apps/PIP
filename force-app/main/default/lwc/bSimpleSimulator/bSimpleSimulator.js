@@ -4,9 +4,15 @@ import getPrograms from '@salesforce/apex/SimpleSimulatorController.getPrograms'
 import getRecords from '@salesforce/apex/SimpleSimulatorController.getRecords';
 import translateIds from '@salesforce/apex/SimpleSimulatorController.translateIds';
 import simulate from '@salesforce/apex/SimpleSimulatorController.simulate';
+import simulateAsync from '@salesforce/apex/SimpleSimulatorController.simulateAsync';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import { subscribe, unsubscribe, onError, setDebugFlag, isEmpEnabled } from 'lightning/empApi';
 
 export default class BSimpleSimulator extends LightningElement {
+    channelName = '/event/PipSim__SimulationResult__e';
+    subscription;
+    isSubscribeDisabled = false;
+    isUnsubscribeDisabled = !this.isSubscribeDisabled;
 
     @track member;
     @track memberName;
@@ -14,6 +20,7 @@ export default class BSimpleSimulator extends LightningElement {
     @track programs;
     @track programName;
     @track objectOptions = [];
+    @track isLoading = false;
     @track hasPrograms = false;
     @track hasProgram = false;
     @track hasObjects = false;
@@ -30,7 +37,13 @@ export default class BSimpleSimulator extends LightningElement {
     @track translate = false;
     @track showOutput = false;
 
+    @api simulationMode;
+
     connectedCallback() {
+      this.registerErrorListener();
+      this.doSubscribe();
+
+      this.isLoading = true;
       getPrograms()
       .then(result => {
         this.programs = [];
@@ -42,8 +55,10 @@ export default class BSimpleSimulator extends LightningElement {
         }.bind(this))
 
         this.hasPrograms = this.programs && this.programs.length;
+        this.isLoading = false;
       })
       .catch(error => {
+        this.isLoading = false;
         console.error(error);
       })
     }
@@ -71,7 +86,7 @@ export default class BSimpleSimulator extends LightningElement {
     getRelatedRecords(){
       getRecords({
         memberId: this.member,
-        objectName: this.objectValue
+        objectName: this.objectValue,
       })
       .then(result => {
         this.relatedRecords = [];
@@ -92,6 +107,10 @@ export default class BSimpleSimulator extends LightningElement {
         }.bind(this))
 
         this.hasRecords = this.relatedRecords && this.relatedRecords.length;
+
+        console.log(
+          JSON.stringify(this.relatedColumns, null, 2)
+        )
       })
       .catch(error => {
         console.error(error)
@@ -99,6 +118,7 @@ export default class BSimpleSimulator extends LightningElement {
     }
 
     getRelated(){
+      this.isLoading = true;
       getRelatedLists({
         objectName: 'FieloPLT__Member__c'
       })
@@ -111,8 +131,10 @@ export default class BSimpleSimulator extends LightningElement {
         }.bind(this));
 
         this.hasObjects = relatedLists && relatedLists.length;
+        this.isLoading = false;
       })
       .catch(error => {
+        this.isLoading = false;
         console.error(error)
       })
     }
@@ -128,16 +150,39 @@ export default class BSimpleSimulator extends LightningElement {
     }
 
     handleSimulate() {
-      simulate({
-        memberId: this.member,
-        records: this.selectedIds
-      })
-      .then(output => {
+      if (this.simulationMode == 'Sync') {
+        this.isLoading = true;
+        simulate({
+          memberId: this.member,
+          records: this.selectedIds
+        })
+        .then(output => {
+          this.setOutput(output);
+          this.isLoading = false;
+        })
+        .catch(error => {
+          this.isLoading = false;
+          console.error(error);
+          const errorEvent = new ShowToastEvent({
+            title: 'Simulation Error',
+            message: error && error.body && error.body.message || JSON.stringify(error),
+            variant: 'error',
+            mode: 'dismissable'
+          });
+          this.dispatchEvent(errorEvent);
+        })
+      } else {
+        this.isLoading = true;
+        this.callSimulateAsync();
+      }
+    }
+
+    setOutput(output) {
+      try {
         this.translate = this.template.querySelector('.fielo-translate-field').checked;
 
-        console.log(`this.translate: ${this.translate}`);
         if (!this.translate) {
-          this.output = output;
+          this.output = JSON.stringify(JSON.parse(output), null, 2);
           this.showOutput = true;
         } else {
           var idsToTranslate = [];
@@ -160,7 +205,7 @@ export default class BSimpleSimulator extends LightningElement {
             Object.keys(translationMap).forEach(fObjectId => {
               outputStr = outputStr.replaceAll(fObjectId, translationMap[fObjectId]);
             });
-            this.output = outputStr;
+            this.output = JSON.stringify(JSON.parse(outputStr), null, 2);;
             this.showOutput = true;
           })
           .catch(error => {
@@ -174,16 +219,46 @@ export default class BSimpleSimulator extends LightningElement {
             this.dispatchEvent(errorEvent);
           })
         }
-      })
-      .catch(error => {
+      } catch (error) {
         console.error(error);
-        const errorEvent = new ShowToastEvent({
-          title: 'Simulation Error',
-          message: error && error.body && error.body.message || JSON.stringify(error),
-          variant: 'error',
-          mode: 'dismissable'
-        });
-        this.dispatchEvent(errorEvent);
-      })
+      }
     }
+
+    simulationRequest;
+    async callSimulateAsync() {
+      this.simulationRequest = await simulateAsync({memberId: this.member,records: this.selectedIds});
+    }
+
+    registerErrorListener() {
+        // Invoke onError empApi method
+        onError(error => {
+            this.isLoading = false;
+            console.log('Received error from server: ', JSON.stringify(error));
+        });
+    }
+
+    // Handles subscribe button click
+    async doSubscribe() {
+        var subscriptionResponse = await subscribe(
+            this.channelName,
+            -1,
+            function(response) {
+                this.isLoading = false;
+                // Response contains the subscription information on subscribe call
+                console.log('New message received: ', JSON.stringify(response.data, null, 2));
+
+                if (response && response.data && response.data.payload && response.data.payload.PipSim__Result__c) {
+                  this.setOutput(response.data.payload.PipSim__Result__c);
+                }
+            }.bind(this)
+        );
+        this.subscription = subscriptionResponse;
+    }
+
+    disconnectedCallback(){
+    unsubscribe(this.subscription, response => {
+      console.log('unsubscribe() response: ', JSON.stringify(response));
+      // Response is true for successful unsubscribe
+    });
+  }
 }
