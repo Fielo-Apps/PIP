@@ -1,5 +1,32 @@
 @isTest
 public class TestSimulator {
+
+    @isTest
+    static void testGetConfiguration() {
+
+        FieloPLT__Program__c program = new FieloPLT__Program__c(
+            Name = 'Program',
+            FieloPLT__OnlineTransactionProcessing__c = true,
+            FieloPLT__EnableIncentivesCalculator__c = true
+        );
+
+        insert program;
+
+        FieloPLT__Member__c member = new FieloPLT__Member__c(
+            Name = 'Member A',
+            FieloPLT__Email__c = ('Member A').deleteWhitespace() + Datetime.now().getTime() + '@fielo.com',
+            FieloPLT__Program__c = program.Id,
+            FieloPLT__Type__c = 'Individual Account'
+        );
+        insert member;
+
+        startTest();
+        Map<String,Object> ret = (Map<String,Object>) SimpleSimulatorController.getConfiguration(member.Id, 'FieloPLT__Event__c', 'CreatedDate');
+        Map<String,Object> objectInfo = (Map<String,Object>) ret.get('objectInfo');
+        System.assertEquals('FieloPLT__Event__c', (String) objectInfo.get('name'), 'There is no objectInfo.name equal FieloPLT__Event__c');
+        stopTest();
+    }
+
     @isTest
     static void testSimulate(){
         FieloPLT__Program__c program = new FieloPLT__Program__c(
@@ -467,6 +494,42 @@ public class TestSimulator {
                 }
             ),
             'FieloPLT__Event__c'
+        );
+
+        whereCondition = SimulatorService.getWhereCondition(
+            JSON.serialize(
+                new Map<String,String>{
+                    'Name' => 'LIKE:John'
+                }
+            ),
+            'FieloPLT__Member__c'
+        );
+
+        whereCondition = SimulatorService.getWhereCondition(
+            JSON.serialize(
+                new Map<String,String>{
+                    'FieloPLT__Points__c' => 'FROM:10'
+                }
+            ),
+            'FieloPLT__Member__c'
+        );
+
+        whereCondition = SimulatorService.getWhereCondition(
+            JSON.serialize(
+                new Map<String,String>{
+                    'FieloPLT__Points__c' => 'FROM:10TO:1000'
+                }
+            ),
+            'FieloPLT__Member__c'
+        );
+
+        whereCondition = SimulatorService.getWhereCondition(
+            JSON.serialize(
+                new Map<String,String>{
+                    'LastModifiedDate' => 'FROM:10TO:1000'
+                }
+            ),
+            'FieloPLT__Member__c'
         );
     }
 

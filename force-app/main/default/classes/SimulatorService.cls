@@ -127,7 +127,11 @@ public without sharing class SimulatorService {
             query += String.join(fieldset, ',');
         }
         query += ' FROM ' + objectName;
-        query += getWhereCondition(dataFilters, objectName);
+
+        String whereClause = getWhereCondition(dataFilters, objectName);
+        if (String.isNotBlank(whereClause)) {
+            query += ' WHERE ' + whereClause;
+        }
 
         // ORDER BY
         if (orderBy == null){
@@ -253,7 +257,7 @@ public without sharing class SimulatorService {
                     }
                 }
                 if ( whereCondition != '') {
-                    whereCondition = ' WHERE ' + whereCondition.substring(4);
+                    whereCondition = whereCondition.substring(4);
                 }
             } catch( JSONException e ) {
                 system.debug(LoggingLevel.ERROR, 'INVALID JSON ' + filterJson );
