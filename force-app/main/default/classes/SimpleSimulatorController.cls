@@ -10,8 +10,16 @@ public class SimpleSimulatorController {
     @AuraEnabled
     public static Object getRecords(String memberId, String objectName, String jsonFilter, String recordsPerPage, String offset){
 
+        if (String.isBlank(recordsPerPage)) {
+            recordsPerPage = '10';
+        }
+
+        if (String.isBlank(offset)) {
+            offset = '0';
+        }
+
         List<FieloPLT__Action__c> actions = (List<FieloPLT__Action__c>) Database.query(
-            'SELECT Id, FieloPLT__CriteriaFields__c, FieloPLT__ConditionField__c, FieloPLT__ConditionValue__c, FieloPLT__ConditionType__c, FieloPLT__RuleTrigger__r.FieloPLT__Date__c FROM FieloPLT__Action__c WHERE FieloPLT__RuleTrigger__r.FieloPLT__Object__c = :objectName'
+            'SELECT Id, FieloPLT__CriteriaFields__c, FieloPLT__ConditionField__c, FieloPLT__ConditionValue__c, FieloPLT__ConditionType__c, FieloPLT__RuleTrigger__r.FieloPLT__Date__c, FieloPLT__RuleTrigger__r.FieloPLT__Object__c FROM FieloPLT__Action__c WHERE FieloPLT__RuleTrigger__r.FieloPLT__Object__c = :objectName'
         );
 
         List<String> actionFilters = new List<String>();
@@ -49,13 +57,22 @@ public class SimpleSimulatorController {
                     }
                 }
             }
+
+            Map<String, Schema.SObjectField> objectFields = ((sObject)Type.forName(objectName).newInstance()).getSObjectType().getDescribe().fields.getMap();
+
             for(FieloPLT__Action__c action : actions) {
                 if (String.isNotBlank(action.FieloPLT__ConditionField__c) && !fieldsByObject.isEmpty()) {
                     fieldsByObject.get(objectName).add(action.FieloPLT__ConditionField__c);
 
-                    actionFilter = new Map<String,Object>{
-                        action.FieloPLT__ConditionField__c => (Object) '!' + action.FieloPLT__ConditionValue__c
-                    };
+                    if (objectFields.get(action.FieloPLT__ConditionField__c).getDescribe().getType().name().tolowercase() == 'boolean') {
+                        actionFilter = new Map<String,Object>{
+                            action.FieloPLT__ConditionField__c => (Object) 'BOOLEAN:' + (action.FieloPLT__ConditionValue__c.tolowercase() == 'true' ? 'false' : 'true')
+                        };
+                    } else {
+                        actionFilter = new Map<String,Object>{
+                            action.FieloPLT__ConditionField__c => (Object) '!' + action.FieloPLT__ConditionValue__c
+                        };
+                    }
 
                     actionFilters.add(SimulatorService.getWhereCondition(JSON.serialize(actionFilter),objectName));
                 }
@@ -87,7 +104,7 @@ public class SimpleSimulatorController {
 
         Set<String> memberFilter = new Set<String>();
         for (SObjectField fieldToken : objectFields.values()) {
-            if(fieldToken.getDescribe().getType().name().toLowerCase() == 'reference' && fieldToken.getDescribe().getReferenceTo()?.get(0).getDescribe().getName() == 'FieloPLT__Member__c') {
+            if(fieldToken.getDescribe().getType().name().toLowerCase() == 'reference' && fieldToken.getDescribe().getReferenceTo().get(0).getDescribe().getName() == 'FieloPLT__Member__c') {
                 memberFilter.add(fieldToken.getDescribe().getName() + ' = :memberId');
             }
         }
@@ -195,11 +212,9 @@ public class SimpleSimulatorController {
             String.join(new List<String>(fields), ', ') +
             ' FROM ' + objectName +
             ' WHERE ' + String.join(new List<String>(whereClauses), ' AND ') +
-            ' ORDER BY LastModifiedDate DESC' +
-            (recordsPerPage == null ? '' : ' LIMIT '+recordsPerPage) +
-            (offset == null ? '' : ' OFFSET '+offset);
+            ' ORDER BY LastModifiedDate DESC LIMIT ' + recordsPerPage + ' OFFSET ' + offset;
 
-        System.debug('query='+query);
+        System.debug('query: ' + query.replace('FROM','\nFROM\n').replace('WHERE','\nWHERE\n'));
 
         return (Object) new Map<String, Object>{
             'columns' => (Object) columns,
@@ -210,6 +225,29 @@ public class SimpleSimulatorController {
     @AuraEnabled
     public static String simulate(String memberId, List<SObject> records){
         return JSON.serializePretty(FieloPLT.SimulationAPI.simulateRewarding(records, Id.valueOf(memberId), false));
+    }
+
+    @AuraEnabled
+    public static object simulateAsync(String memberId, List<SObject> records){
+        SimulationRequest__e payload = new SimulationRequest__e(
+            Member__c = memberId,
+            Records__c = JSON.serialize(records)
+        );
+
+        // Call method to publish events
+        Database.SaveResult result = EventBus.publish(payload);
+        String uuid = '';
+
+        // Inspect publishing result for each event
+        if (!result.isSuccess()) {
+            ErrorService.insertErrors(result.getErrors());
+        } else {
+            uuid = EventBus.getOperationId(result);
+        }
+        return new Map<String, Object>{
+            'payload' =>    (object) payload,
+            'UUID' =>       (object) uuid
+        };
     }
 
     @AuraEnabled

@@ -8,4 +8,9 @@
         <target>lightning__RecordPage</target>
         <target>lightning__HomePage</target>
     </targets>
+    <targetConfigs>
+        <targetConfig targets="lightning__AppPage">
+            <!-- GENERAL --><property name="simulationMode" type="String" label="Select Simulation Mode" description="Asynchronous or Synchronous" datasource="Async,Sync" default="Sync"/>
+        </targetConfig>
+    </targetConfigs>
 </LightningComponentBundle>
