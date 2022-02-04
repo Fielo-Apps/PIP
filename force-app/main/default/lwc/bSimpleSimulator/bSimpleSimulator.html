@@ -40,7 +40,8 @@
 
                     <template if:true={showOutput}>
                         <div class="slds-var-m-around_medium">
-                            {output}
+                            <lightning-textarea name="output" variant="label-hidden" readonly value={output} label="Results">
+                            </lightning-textarea>
                         </div>
                     </template>
                 </template>
@@ -58,5 +59,7 @@
                 No programs found
             </div>
         </template>
+
+        <lightning-spinner if:true={isLoading} alternative-text="Loading" size="small"></lightning-spinner>
     </lightning-card>
 </template>
