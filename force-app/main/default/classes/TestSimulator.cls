@@ -123,7 +123,6 @@ public class TestSimulator {
                 FieloPLT__PointConversionMode__c = 'Fixed Value',
                 FieloPLT__ConversionValue__c = 200,
                 FieloPLT__Action__c = action.Id,
-                FieloPLT__LogicalExpression__c = 'ALL',
                 FieloPLT__Type__c = 'No Competition'
             )
         };
@@ -258,7 +257,6 @@ public class TestSimulator {
                 FieloPLT__PointConversionMode__c = 'Fixed Value',
                 FieloPLT__ConversionValue__c = 200,
                 FieloPLT__Action__c = action.Id,
-                FieloPLT__LogicalExpression__c = 'ALL',
                 FieloPLT__Type__c = 'No Competition'
             )
         };
@@ -354,10 +352,10 @@ public class TestSimulator {
         triggers.FieloPLT__Criterion__c = false;
         upsert triggers;
 
-        update new FieloPLT__Action__c (
-            Id = action.Id,
-            FieloPLT__CriteriaFields__c = JSON.serialize(criteriasMapByObject)
-        );
+        // update new FieloPLT__Action__c (
+        //     Id = action.Id,
+        //     FieloPLT__CriteriaFields__c = JSON.serialize(criteriasMapByObject)
+        // );
 
         List<Map<String,String>> relatedLists = SimulatorService.getRelatedLists('FieloPLT__Event__c', null);
 
@@ -421,10 +419,10 @@ public class TestSimulator {
         triggers.FieloPLT__Criterion__c = false;
         upsert triggers;
 
-        update new FieloPLT__Action__c (
-            Id = action.Id,
-            FieloPLT__CriteriaFields__c = JSON.serialize(criteriasMapByObject)
-        );
+        // update new FieloPLT__Action__c (
+        //     Id = action.Id,
+        //     FieloPLT__CriteriaFields__c = JSON.serialize(criteriasMapByObject)
+        // );
 
         List<SObject> records = SimulatorService.getWiredRecords(
             String.join(new List<String>(Schema.SObjectType.FieloPLT__Event__c.fields.getMap().keySet()), ','),
@@ -526,7 +524,7 @@ public class TestSimulator {
         whereCondition = SimulatorService.getWhereCondition(
             JSON.serialize(
                 new Map<String,String>{
-                    'LastModifiedDate' => 'FROM:10TO:1000'
+                    'LastModifiedDate' => '2021-01-01T00:00:00ZTO:2021-02-01T23:59:59Z'
                 }
             ),
             'FieloPLT__Member__c'
