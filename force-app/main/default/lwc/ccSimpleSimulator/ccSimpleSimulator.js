@@ -1,5 +1,6 @@
 import { LightningElement, track, api } from 'lwc';
 import getRecords from '@salesforce/apex/SimpleSimulatorController.getRecords';
+import getRecord from '@salesforce/apex/SimpleSimulatorController.getRecord';
 import translateIds from '@salesforce/apex/SimpleSimulatorController.translateIds';
 import simulate from '@salesforce/apex/SimpleSimulatorController.simulate';
 import getConfiguration from '@salesforce/apex/SimpleSimulatorController.getConfiguration';
@@ -14,6 +15,7 @@ export default class CcSimpleSimulator extends LightningElement {
   @track member = {
     id: ''
   };
+  @track memberId;
   @track hasMember = false;
   @track hasRecords = false;
   @track hasSelectedRecords = false;
@@ -58,15 +60,40 @@ export default class CcSimpleSimulator extends LightningElement {
 
   @api objectName;
   @api dateField = 'CreatedDate';
+  @api additionalFilter;
 
   connectedCallback() {
-    console.log(`objectName: ${this.objectName}`);
-    console.log(`dateField: ${this.dateField}`);
+    console.info(`objectName: ${this.objectName}`);
+    console.info(`dateField: ${this.dateField}`);
     this.showSpinner = true;
+
+    document.addEventListener('mxmemberselector__memberselected', this.handleMemberSelected.bind(this));
+
+    if (!this.memberSelected) {
+      document.dispatchEvent(new CustomEvent('mxmemberselector__fireevents'));
+    }
 
     loadStyle(this, pipCss).catch((error) => {
       console.warn(error);
     });
+  }
+
+  handleMemberSelected(event) {
+    if (event.detail !== this.memberId) {
+      this.memberId = event.detail;
+      this.updateMember();
+    }
+  }
+
+  async updateMember() {
+    try {
+      this.member = await getRecord({recordId:this.memberId});
+      this.member.id = this.member.Id;
+      this.getRelatedRecords();
+      this.getFieloConfiguration();
+    } catch (error) {
+      console.error(error);
+    }
   }
 
   @api
@@ -81,6 +108,9 @@ export default class CcSimpleSimulator extends LightningElement {
 
   getRelatedRecords(){
     this.showSpinner = true;
+
+    this.assembleFilter();
+
     getRecords({
       memberId: this.member.Id,
       objectName: this.objectName,
@@ -398,27 +428,41 @@ export default class CcSimpleSimulator extends LightningElement {
   filterFromElement;
   filterToElement;
 
-  handleFilter() {
-    this.initFilter();
+  assembleFilter() {
+    try {
+      this.initFilter();
 
-    let dateFilterStr = this.filterFromElement &&
-      this.filterFromElement.value &&
-      this.filterFromElement.value != "null" &&
-      `FROM:${this.filterFromElement.value}` || '';
+      let dateFilterStr = this.filterFromElement &&
+        this.filterFromElement.value &&
+        this.filterFromElement.value != "null" &&
+        `FROM:${this.filterFromElement.value}` || '';
 
-    dateFilterStr += this.filterToElement &&
-      this.filterToElement.value &&
-      this.filterToElement.value != "null" &&
-      `TO:${this.filterToElement.value}`;
+      dateFilterStr += this.filterToElement &&
+        this.filterToElement.value &&
+        this.filterToElement.value != "null" &&
+        `TO:${this.filterToElement.value}`;
 
-    if (dateFilterStr) {
       let filter = {};
-      filter[this.dateField] = dateFilterStr;
+
+      if (this.additionalFilter) {
+        try {
+          filter = Object.assign(filter, JSON.parse(this.additionalFilter));
+        } catch (error) {
+          console.error(error);
+        }
+      }
+
+      if (dateFilterStr) {
+        filter[this.dateField] = dateFilterStr;
+      }
+
       this.filters = JSON.stringify(filter);
+    } catch (error) {
+      console.error(error);
     }
+  }
 
-    console.log(this.filters);
-
+  handleFilter() {
     this.getRelatedRecords();
   }
 

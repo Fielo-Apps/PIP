@@ -218,7 +218,7 @@ public class SimpleSimulatorController {
 
         return (Object) new Map<String, Object>{
             'columns' => (Object) columns,
-            'records' => (Object) Database.query(query)
+            'records' => (Object) SObjectUtils.denormalizeRecords(Database.query(query))
         };
     }
 
@@ -405,5 +405,10 @@ public class SimpleSimulatorController {
         } catch (Exception e) {
             throw new AuraHandledException(e.getMessage());
         }
+    }
+
+    @AuraEnabled
+    public static Object getRecord(String recordId) {
+        return SObjectSelector.getRecord(recordId);
     }
 }
