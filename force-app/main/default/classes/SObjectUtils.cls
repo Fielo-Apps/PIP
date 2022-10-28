@@ -14,8 +14,10 @@ public class SObjectUtils {
 
         List<SObject> recordsStack = new List<SObject>();
         Boolean isLookup = false;
+        Boolean isSObject = false;
         Boolean isNewRecord = true;
         Map<String,Set<String>> fieldsByPath = new Map<String,Set<String>>();
+        Object fieldValue;
 
         while(record != null) {
 
@@ -27,13 +29,19 @@ public class SObjectUtils {
                 fieldsByPath.put(pathStr, new Set<String>(record.getPopulatedFieldsAsMap().keySet()));
             }
             for (String field : new Set<String>(fieldsByPath.get(pathStr))) {
+                try{
+                    fieldValue = record.get(field);
+                    isSObject = false;
+                } catch(SObjectException e) {
+                    isSObject = true;
+                }
                 fieldsByPath.get(pathStr).remove(field);
-                if (field.endsWith('__r')) {
+                if (isSObject) {
                     recordsStack.add(record);
                     record = record.getSObject(field);
+                    isLookup = true;
                     path.add(field);
                     pathStr = String.join(path, '.');
-                    isLookup = true;
                     break;
                 } else {
                     if (path.isEmpty()) {
