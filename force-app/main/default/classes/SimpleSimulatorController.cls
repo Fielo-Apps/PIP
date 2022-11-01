@@ -346,11 +346,13 @@ public class SimpleSimulatorController {
         FieloPLT__Member__c member = [SELECT Id, FieloPLT__Program__c FROM FieloPLT__Member__c WHERE Id = :memberId];
 
         Map<String,Object> currencies = new Map<String,Object>();
+        Map<String,Object> currenciesMap = new Map<String,Object>();
         for(FieloPLT__ProgramPointType__c ppt : [SELECT Id, FieloPLT__PointType__r.Name, FieloPLT__PointType__r.FieloPLT__DecimalsNumber__c, FieloPLT__PointType__r.FieloPLT__Symbol__c FROM FieloPLT__ProgramPointType__c WHERE FieloPLT__Program__c = :member.FieloPLT__Program__c]) {
             currencies.put(ppt.FieloPLT__PointType__r.Name, (Object) ppt.FieloPLT__PointType__r.FieloPLT__DecimalsNumber__c);
-            currencies.put(ppt.FieloPLT__PointType__r.Id, (Object) ppt.FieloPLT__PointType__r);
+            currenciesMap.put(ppt.FieloPLT__PointType__r.Id, (Object) ppt.FieloPLT__PointType__r);
         }
         fieloConfig.put('currencies', (Object) currencies);
+        fieloConfig.put('currenciesMap', (Object) currenciesMap);
 
         List<Map<String,Object>> columns = new List<Map<String,Object>>{
             new Map<String, Object> {

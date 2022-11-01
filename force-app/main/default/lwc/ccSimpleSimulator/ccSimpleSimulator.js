@@ -229,10 +229,10 @@ export default class CcSimpleSimulator extends LightningElement {
       let incentiveIndex = this.outputSummaryColumns.map(function(col) {return col.fieldName; }).indexOf('incentive');
       this.outputSummaryColumns[incentiveIndex].label += ` > ${colRecord.label}`;
 
-      if (this.config?.currencies && this.config?.currencies?.size()) {
-        this.currencyInfo = this.config.currencies.reduce((map, curr) => {
-          if (curr?.Name) {
-            map[curr.Name] = curr;
+      if (this.config?.currenciesMap && Object.keys(this.config.currenciesMap).length) {
+        this.currencyInfo = Object.keys(this.config.currenciesMap).reduce((map, currId) => {
+          if (this.config.currenciesMap?.[currId]?.Name) {
+            map[this.config.currenciesMap[currId].Name] = this.config.currenciesMap[currId];
           }
           return map;
         }, {});
@@ -281,7 +281,7 @@ export default class CcSimpleSimulator extends LightningElement {
         name: curr,
         amount: result[curr].amount,
         maximum: result[curr].maximum,
-        symbol: this.currencyInfo[curr],
+        symbol: this.currencyInfo?.[curr]?.FieloPLT__Symbol__c,
         remaining: result[curr].maximum-result[curr].amount,
         percent: (result[curr].amount/result[curr].maximum)*100
       });
@@ -468,7 +468,7 @@ export default class CcSimpleSimulator extends LightningElement {
         filter[this.dateField] = dateFilterStr;
       }
 
-      if (Object.keys(filter) && Object.keys(filter).size()) {
+      if (Object.keys(filter) && Object.keys(filter).length) {
         this.filters = JSON.stringify(filter);
       } else {
         this.filters = null;

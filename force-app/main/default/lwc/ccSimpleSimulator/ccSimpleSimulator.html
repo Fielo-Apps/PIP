@@ -6,7 +6,7 @@
                     <b>Incentives Planner</b>
                 </div>
                 <div class="slds-text-heading_small">
-                    Incentives Calculator is based on revenue objectives.<br/>
+                    Incentives Planner is based on revenue objectives.<br/>
                     By default, all of your objectives are selected. You can deselect and recalculate.
                 </div>
             </lightning-layout-item>
@@ -19,16 +19,16 @@
                                     <div class="slds-text-title_caps slds-text-color_default slds-size_1-of-1"><b>{currency.name}</b></div>
                                     <div class="slds-text-color_default slds-size_1-of-1"><b>Remaining Potential</b></div>
                                     <div class="slds-text-heading_medium slds-size_1-of-1 slds-p-bottom_medium">
-                                        <lightning-formatted-number value={currency.remaining} format-style="currency"></lightning-formatted-number>
+                                        {currency.symbol}<lightning-formatted-number value={currency.remaining}></lightning-formatted-number>
                                     </div>
                                     <lightning-progress-bar class="slds-progress-bar__value_success" value={currency.percent} size="small"></lightning-progress-bar>
                                     <lightning-layout class="slds-p-around_x-medium" horizontal-align="spread" vertical-align="start">
                                         <lightning-layout-item>
-                                            <lightning-formatted-number value={currency.amount} format-style="currency"></lightning-formatted-number>
+                                            {currency.symbol}<lightning-formatted-number value={currency.amount}></lightning-formatted-number>
                                             &nbsp;eligible
                                         </lightning-layout-item>
                                         <lightning-layout-item>
-                                            <lightning-formatted-number value={currency.maximum} format-style="currency"></lightning-formatted-number>
+                                            {currency.symbol}<lightning-formatted-number value={currency.maximum}></lightning-formatted-number>
                                         </lightning-layout-item>
                                     </lightning-layout>
                                 </lightning-layout-item>
