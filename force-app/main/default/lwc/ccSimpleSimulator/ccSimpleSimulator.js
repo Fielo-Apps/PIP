@@ -32,6 +32,8 @@ export default class CcSimpleSimulator extends LightningElement {
 
   @track currencySummary;
 
+  currencyInfo;
+
   @track currencySummaryItemSize;
 
   @track isTableOutput = false;
@@ -227,6 +229,15 @@ export default class CcSimpleSimulator extends LightningElement {
       let incentiveIndex = this.outputSummaryColumns.map(function(col) {return col.fieldName; }).indexOf('incentive');
       this.outputSummaryColumns[incentiveIndex].label += ` > ${colRecord.label}`;
 
+      if (this.config?.currencies && this.config?.currencies?.size()) {
+        this.currencyInfo = this.config.currencies.reduce((map, curr) => {
+          if (curr?.Name) {
+            map[curr.Name] = curr;
+          }
+          return map;
+        }, {});
+      }
+
       if (this.config.dateField) {
         this.filterLabels.from = `${this.config.dateField.label} ${this.filterLabels.from}`;
         this.filterLabels.to = `${this.config.dateField.label} ${this.filterLabels.to}`;
@@ -270,6 +281,7 @@ export default class CcSimpleSimulator extends LightningElement {
         name: curr,
         amount: result[curr].amount,
         maximum: result[curr].maximum,
+        symbol: this.currencyInfo[curr],
         remaining: result[curr].maximum-result[curr].amount,
         percent: (result[curr].amount/result[curr].maximum)*100
       });
@@ -444,7 +456,7 @@ export default class CcSimpleSimulator extends LightningElement {
 
       let filter = {};
 
-      if (this.additionalFilter) {
+      if (this.additionalFilter != null && this.additionalFilter != undefined && this.additionalFilter != '') {
         try {
           filter = Object.assign(filter, JSON.parse(this.additionalFilter));
         } catch (error) {
@@ -456,7 +468,11 @@ export default class CcSimpleSimulator extends LightningElement {
         filter[this.dateField] = dateFilterStr;
       }
 
-      this.filters = JSON.stringify(filter);
+      if (Object.keys(filter) && Object.keys(filter).size()) {
+        this.filters = JSON.stringify(filter);
+      } else {
+        this.filters = null;
+      }
     } catch (error) {
       console.error(error);
     }
