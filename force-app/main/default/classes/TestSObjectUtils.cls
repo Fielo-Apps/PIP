@@ -376,10 +376,9 @@ public class TestSObjectUtils {
 
     @istest
     static void getFieldsFromRelationshipType() {
-        Map<String, DescribeFieldResult> fieldsMap = SObjectUtils.getFieldsFromRelationshipType('FieloPLT__Member__c', 'FieloPLT__Transaction__c');
+        Map<String, DescribeFieldResult> fieldsMap = SObjectUtils.getFieldsFromRelationshipType('FieloPLT__Transaction__c', 'FieloPLT__Member__c');
 
         System.assert(fieldsMap.containsKey('FieloPLT__Member__c'));
-        System.assert(fieldsMap.containsKey('FieloPLT__Type__c'));
     }
 
     @istest
