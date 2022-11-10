@@ -478,7 +478,6 @@ public class SObjectUtils {
         }
     }
 
-
 	public static map<string,DescribeFieldResult> getFieldsFromRelationshipType(String objectName, String relationshipType) {
         map<string, Schema.SObjectField> fieldMap = getDescribeInstance(getSObjectTypeInstance(objectName)).fields.getMap();
         map<string,DescribeFieldResult> mapFieldsType = new map<string,DescribeFieldResult> ();
@@ -557,7 +556,6 @@ public class SObjectUtils {
         } else {
             return getExternalIdField(getSObjectTypeInstance(sobjectName));
         }
-
     }
 
     public static string getExternalIdField(SObjectType sobjectToken) {
