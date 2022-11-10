@@ -417,4 +417,61 @@ public class TestSObjectUtils {
         System.assertEquals('Program', String.valueOf(result.get(0).get('FieloPLT__Program__r.Name')));
         System.assertEquals(true, Boolean.valueOf(result.get(0).get('FieloPLT__Program__r.FieloPLT__OnlineTransactionProcessing__c')));
     }
+
+    @istest
+    static void getExternalIdField() {
+        System.assertEquals('FieloPLT__ExternalId__c', SObjectUtils.getExternalIdField('FieloPLT__Member__c'));
+        System.assertEquals('FieloPLT__ExternalId__c', SObjectUtils.getExternalIdField(FieloPLT__Member__c.sobjecttype));
+        System.assertEquals('FieloPLT__ExternalId__c', SObjectUtils.getExternalIdField(sobjecttype.FieloPLT__Member__c));
+
+        System.assertEquals('FieloPLT__ExternalId__c', SObjectUtils.getExternalIdField('FieloPLT__RuleTrigger__c'));
+        System.assertEquals('FieloPLT__ExternalId__c', SObjectUtils.getExternalIdField(FieloPLT__RuleTrigger__c.sobjecttype));
+        System.assertEquals('FieloPLT__ExternalId__c', SObjectUtils.getExternalIdField(sobjecttype.FieloPLT__RuleTrigger__c));
+    }
+
+    @istest
+    static void addFields() {
+        FieloPLT__Program__c program = new FieloPLT__Program__c(
+            Name = 'Program',
+            FieloPLT__OnlineTransactionProcessing__c = true,
+            FieloPLT__EnableIncentivesCalculator__c = true
+        );
+
+        insert program;
+
+        FieloPLT__Member__c memberA = new FieloPLT__Member__c(
+            Name = 'Member A',
+            FieloPLT__Email__c = ('Member A').deleteWhitespace() + Datetime.now().getTime() + '@fielo.com',
+            FieloPLT__Program__c = program.Id,
+            FieloPLT__Type__c = 'Individual Account'
+        );
+        FieloPLT__Member__c memberB = new FieloPLT__Member__c(
+            Name = 'Member B',
+            FieloPLT__Email__c = ('Member B').deleteWhitespace() + Datetime.now().getTime() + '@fielo.com',
+            FieloPLT__Program__c = program.Id,
+            FieloPLT__Type__c = 'Individual Account'
+        );
+        FieloPLT__Member__c memberC = new FieloPLT__Member__c(
+            Name = 'Member C',
+            FieloPLT__Email__c = ('Member C').deleteWhitespace() + Datetime.now().getTime() + '@fielo.com',
+            FieloPLT__Program__c = program.Id,
+            FieloPLT__Type__c = 'Individual Account'
+        );
+        insert new List<FieloPLT__Member__c>{memberA,memberB,memberC};
+
+        List<FieloPLT__Member__c> members = (List<FieloPLT__Member__c>) Database.query(
+            'SELECT ' +
+                String.join(new List<String>(SObjectType.FieloPLT__Member__c.fields.getMap().keySet()),',') +
+            ' FROM FieloPLT__Member__c'
+        );
+
+        Map<String, Object> fieldsMap = new Map<String, Object>();
+
+        SObjectUtils.addFields(
+            members.get(0),
+            members.get(0).getPopulatedFieldsAsMap().keySet(),
+            fieldsMap,
+            new Set<String>{'Id'}
+        );
+    }
 }
