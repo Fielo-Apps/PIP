@@ -114,7 +114,7 @@ export default class CcSimpleSimulator extends LightningElement {
     this.assembleFilter();
 
     getRecords({
-      memberId: this.member.Id,
+      memberId: this.objectName.endsWith('__x') ? this.member.FieloPLT__ExternalId__c : this.member.Id,
       objectName: this.objectName,
       jsonFilter: this.filters,
       recordsPerPage: recordsPerPage + 1,
