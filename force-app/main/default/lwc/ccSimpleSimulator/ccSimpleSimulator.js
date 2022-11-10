@@ -180,34 +180,36 @@ export default class CcSimpleSimulator extends LightningElement {
     })
     .then(output => {
       var idsToTranslate = [];
-      var outputObj = JSON.parse(output);
+      if (output && output.indexOf('{') != -1) {
+        var outputObj = JSON.parse(output);
 
-      Object.keys(outputObj).forEach(currencyId => {
-        idsToTranslate.push(currencyId);
-        Object.keys(outputObj[currencyId].records).forEach(recordId => {
-          idsToTranslate.push(recordId);
-          Object.keys(outputObj[currencyId].records[recordId].incentives).forEach(incentiveId => {
-            idsToTranslate.push(incentiveId);
+        Object.keys(outputObj).forEach(currencyId => {
+          idsToTranslate.push(currencyId);
+          Object.keys(outputObj[currencyId].records).forEach(recordId => {
+            idsToTranslate.push(recordId);
+            Object.keys(outputObj[currencyId].records[recordId].incentives).forEach(incentiveId => {
+              idsToTranslate.push(incentiveId);
+            })
           })
         })
-      })
 
-      var outputStr = output;
+        var outputStr = output;
 
-      translateIds({idsToTranslate: idsToTranslate})
-      .then(translationMap => {
-        Object.keys(translationMap).forEach(fObjectId => {
-          outputStr = outputStr.replaceAll(fObjectId, translationMap[fObjectId]);
-        });
-        this.output = outputStr;
-        console.log(this.output);
-        this.showOutput = true;
-        this.jsonToTable(JSON.parse(this.output));
-        this.showSpinner = false;
-      })
-      .catch(error => {
-        this.handleError(error);
-      })
+        translateIds({idsToTranslate: idsToTranslate})
+        .then(translationMap => {
+          Object.keys(translationMap).forEach(fObjectId => {
+            outputStr = outputStr.replaceAll(fObjectId, translationMap[fObjectId]);
+          });
+          this.output = outputStr;
+          console.log(this.output);
+          this.showOutput = true;
+          this.jsonToTable(JSON.parse(this.output));
+          this.showSpinner = false;
+        })
+        .catch(error => {
+          this.handleError(error);
+        })
+      }
     })
     .catch(error => {
       this.handleError(error);

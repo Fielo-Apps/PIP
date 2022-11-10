@@ -29,7 +29,9 @@ public class SimpleSimulatorController {
 
             List<String> actionFilters = new List<String>();
 
-            Set<String> fields = new Set<String>{'Id','Name'};
+            String objectNameField = SObjectUtils.getNameField(objectName);
+
+            Set<String> fields = new Set<String>{'Id',objectNameField};
             List<SimulatorService.CriteriaWrapper> criterias = new List<SimulatorService.CriteriaWrapper>();
             Map<String,SimulatorService.CriteriaWrapper> criteriasMetaDataMap;
             Map<String,Set<String>> fieldsByObject = new Map<String,Set<String>>();
@@ -52,13 +54,13 @@ public class SimpleSimulatorController {
                 if (fieldsByObject.isEmpty()) {
                     switch on objectName {
                         when 'Opportunity' {
-                            fieldsByObject.put(objectName, new Set<String>{'Name','Amount','CloseDate','StageName'});
+                            fieldsByObject.put(objectName, new Set<String>{objectNameField,'Amount','CloseDate','StageName'});
                         }
                         when 'Lead' {
-                            fieldsByObject.put(objectName, new Set<String>{'Name','CreatedDate','Status'});
+                            fieldsByObject.put(objectName, new Set<String>{objectNameField,'CreatedDate','Status'});
                         }
                         when else {
-                            fieldsByObject.put(objectName, new Set<String>{'Id','Name'});
+                            fieldsByObject.put(objectName, new Set<String>{'Id',objectNameField});
                         }
                     }
                 }
@@ -92,13 +94,13 @@ public class SimpleSimulatorController {
             if (fieldsByObject.isEmpty()) {
                 switch on objectName {
                     when 'Opportunity' {
-                        fieldsByObject.put(objectName, new Set<String>{'Name','Amount','CloseDate','StageName'});
+                        fieldsByObject.put(objectName, new Set<String>{objectNameField,'Amount','CloseDate','StageName'});
                     }
                     when 'Lead' {
-                        fieldsByObject.put(objectName, new Set<String>{'Name','CreatedDate','Status'});
+                        fieldsByObject.put(objectName, new Set<String>{objectNameField,'CreatedDate','Status'});
                     }
                     when else {
-                        fieldsByObject.put(objectName, new Set<String>{'Id','Name'});
+                        fieldsByObject.put(objectName, new Set<String>{'Id',objectNameField});
                     }
                 }
             }
@@ -274,14 +276,15 @@ public class SimpleSimulatorController {
                 Map<String, String> objectInfo = objectInfoMap.get(objectToken);
 
                 if (objectInfo == null) {
-                    Schema.DescribeSObjectResult objDescribe = Id.valueOf(singleId).getSobjectType().getDescribe();
+                    Schema.DescribeSObjectResult objDescribe = objectToken.getDescribe();
                     String objectName = objDescribe.getName();
 
-                    String nameField;
-                    for (SObjectField fieldToken : objDescribe.fields.getMap().values()) {
-                        if (fieldToken.getDescribe().isNameField()) {
-                            nameField = fieldToken.getDescribe().getName();
-                        }
+                    String nameField = SObjectUtils.getNameField(objectName);
+
+                    if (objectToken == FieloPLT__ChallengeReward__c.sObjectType) {
+                        nameField = 'FieloPLT__Challente__r.Name,FieloPLT__Mission__r.Name';
+                    } else {
+                        nameField = SObjectUtils.getNameField(objectName);
                     }
 
                     objectInfo = new Map<String,String>{
@@ -310,7 +313,16 @@ public class SimpleSimulatorController {
                 Set<Id> idsToQuery = idsByObject.get(objectName).get(nameField);
 
                 for(SObject record : Database.query('SELECT Id, ' + nameField + ' FROM ' + objectName + ' WHERE Id in : idsToQuery')){
-                    translatedIds.put(String.valueOf(record.Id), String.valueOf(record.get(nameField)));
+                    SObjectType objectType = Id.valueOf(record.Id).getSobjectType();
+
+                    if (objectType == FieloPLT__ChallengeReward__c.sobjecttype) {
+                        String missionName = String.valueOf(SObjectUtils.getFieldValue(record, 'FieloPLT__Mission__r.Name'));
+                        String challengeName = String.valueOf(SObjectUtils.getFieldValue(record, 'FieloPLT__Challente__r.Name'));
+
+                        translatedIds.put(String.valueOf(record.Id), String.isNotBlank(missionName) ? missionName : challengeName);
+                    } else {
+                        translatedIds.put(String.valueOf(record.Id), String.valueOf(record.get(nameField)));
+                    }
                 }
             }
 
@@ -426,5 +438,52 @@ public class SimpleSimulatorController {
             ErrorService.insertError(e);
             return null;
         }
+    }
+
+    public static List<FieloPLT__ProgramPointType__c> getSimulationCurrencies(Id programId, Id memberId, String objectName) {
+        List<FieloPLT__SimulationSettings__c> settings = (List<FieloPLT__SimulationSettings__c>) Database.query(
+            'SELECT Id, FieloPLT__Currencies__c, ' +
+            ' FieloPLT__Segment__c ' +
+            'FROM FieloPLT__SimulationSettings__c ' +
+            'WHERE FieloPLT__Object__c = : objectName AND FieloPLT__Program__c = :programId'
+        );
+        Set<Id> currencyIds = new Set<Id>();
+        Map<Id, Set<Id>> segmentsByMember = new Map<Id, Set<Id>>();
+        List<FieloPLT__SimulationSettings__c> settingsWithSegment = new List<FieloPLT__SimulationSettings__c>();
+
+        for (FieloPLT__SimulationSettings__c setting : settings) {
+            if (setting.FieloPLT__Segment__c != null) {
+                settingsWithSegment.add(setting);
+                if (segmentsByMember.containsKey(memberId)) {
+                    segmentsByMember.get(memberId).add(setting.FieloPLT__Segment__c);
+                } else {
+                    segmentsByMember.put(memberId, new Set<Id>{setting.FieloPLT__Segment__c});
+                }
+            } else {
+                currencyIds.addAll((List<Id>)setting.FieloPLT__Currencies__c.split(','));
+            }
+        }
+
+        // call segmentation api to get the correct simulation settings
+        if (!settingsWithSegment.isEmpty()) {
+            FieloPLT.SegmentService.verifySegments(segmentsByMember);
+            for (FieloPLT__SimulationSettings__c setting : settingsWithSegment) {
+                if (setting.FieloPLT__Segment__c != null && segmentsByMember.get(memberId)?.contains(setting.FieloPLT__Segment__c) == true) {
+                    currencyIds.addAll((List<Id>)setting.FieloPLT__Currencies__c.split(','));
+                    break;
+                }
+            }
+        }
+
+        return [
+            SELECT
+                Id,
+                FieloPLT__PointType__r.Name,
+                FieloPLT__PointType__r.FieloPLT__DecimalsNumber__c,
+                FieloPLT__PointType__r.FieloPLT__Symbol__c
+            FROM FieloPLT__ProgramPointType__c
+            WHERE FieloPLT__Program__c = :programId
+            AND FieloPLT__PointType__c IN :currencyIds
+        ];
     }
 }
