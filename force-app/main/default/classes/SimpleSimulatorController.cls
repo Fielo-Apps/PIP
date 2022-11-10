@@ -282,7 +282,7 @@ public class SimpleSimulatorController {
                     String nameField = SObjectUtils.getNameField(objectName);
 
                     if (objectToken == FieloPLT__ChallengeReward__c.sObjectType) {
-                        nameField = 'FieloPLT__Challente__r.Name,FieloPLT__Mission__r.Name';
+                        nameField = 'FieloPLT__Challenge__r.Name,FieloPLT__Mission__r.Name';
                     } else {
                         nameField = SObjectUtils.getNameField(objectName);
                     }
@@ -317,7 +317,7 @@ public class SimpleSimulatorController {
 
                     if (objectType == FieloPLT__ChallengeReward__c.sobjecttype) {
                         String missionName = String.valueOf(SObjectUtils.getFieldValue(record, 'FieloPLT__Mission__r.Name'));
-                        String challengeName = String.valueOf(SObjectUtils.getFieldValue(record, 'FieloPLT__Challente__r.Name'));
+                        String challengeName = String.valueOf(SObjectUtils.getFieldValue(record, 'FieloPLT__Challenge__r.Name'));
 
                         translatedIds.put(String.valueOf(record.Id), String.isNotBlank(missionName) ? missionName : challengeName);
                     } else {
