@@ -44,8 +44,8 @@
                 name="excludeActionCondition"
                 type="Boolean"
                 label="Exclude Action Condition"
-                description="This will remove from the list records that already apply to the action condition."
-                default=""
+                description="When checked, records that already apply to the action condition won't be displayed."
+                default="true"
             />
         </targetConfig>
     </targetConfigs>
