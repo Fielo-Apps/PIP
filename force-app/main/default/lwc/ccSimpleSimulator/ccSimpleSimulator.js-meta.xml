@@ -34,9 +34,9 @@
                 default=""
             />
             <property
-                name="sortBy"
+                name="orderBy"
                 type="String"
-                label="Sort By"
+                label="Order By"
                 description="Sort By"
                 default=""
             />
