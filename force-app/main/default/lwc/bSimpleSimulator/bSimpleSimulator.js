@@ -86,7 +86,7 @@ export default class BSimpleSimulator extends LightningElement {
     getRelatedRecords(){
       getRecords({
         memberId: this.member,
-        objectName: this.objectValue,
+        objectName: this.objectValue
       })
       .then(result => {
         this.relatedRecords = [];

@@ -14,6 +14,11 @@ public class SimpleSimulatorController {
 
     @AuraEnabled
     public static Object getRecords(String memberId, String objectName, String jsonFilter, String recordsPerPage, String offset){
+        return getRecords(memberId, objectName, jsonFilter, recordsPerPage, offset, null);
+    }
+
+    @AuraEnabled
+    public static Object getRecords(String memberId, String objectName, String jsonFilter, String recordsPerPage, String offset, String orderBy){
         try {
             if (String.isBlank(recordsPerPage)) {
                 recordsPerPage = '10';
@@ -215,11 +220,23 @@ public class SimpleSimulatorController {
                 whereClauses.add(SimulatorService.getWhereCondition(jsonFilter,objectName));
             }
 
+            String lastModifiedDateField = SObjectUtils.getFieldNameLike(objectName, 'LastModifiedDate');
+
+
+            if (String.isBlank(orderBy)) {
+                String defaultOrderBy = '';
+                if (String.isNotBlank(lastModifiedDateField)) {
+                    defaultOrderBy = ' ORDER BY ' + lastModifiedDateField + ' DESC ';
+                }
+                orderBy = defaultOrderBy;
+            }
+
+
             String query = 'SELECT ' +
                 String.join(new List<String>(fields), ', ') +
                 ' FROM ' + objectName +
                 ' WHERE ' + String.join(new List<String>(whereClauses), ' AND ') +
-                ' ORDER BY LastModifiedDate DESC LIMIT ' + recordsPerPage + ' OFFSET ' + offset;
+                orderBy + ' LIMIT ' + recordsPerPage + ' OFFSET ' + offset;
 
             return (Object) new Map<String, Object>{
                 'columns' => (Object) columns,

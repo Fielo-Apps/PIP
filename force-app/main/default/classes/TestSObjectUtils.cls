@@ -474,4 +474,14 @@ public class TestSObjectUtils {
             new Set<String>{'Id'}
         );
     }
+
+    @istest
+    static void getFieldNameLike() {
+        String lastModifiedDateField = SObjectUtils.getFieldNameLike('FieloPLT__Member__c', 'Program');
+        String lastModifiedDateField1 = SObjectUtils.getFieldNameLike(FieloPLT__Member__c.sobjectType, 'Program');
+        String lastModifiedDateField2 = SObjectUtils.getFieldNameLike(sobjectType.FieloPLT__Member__c, 'Program');
+
+        System.assertEquals(lastModifiedDateField, lastModifiedDateField1);
+        System.assertEquals(lastModifiedDateField, lastModifiedDateField2);
+    }
 }

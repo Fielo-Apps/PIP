@@ -587,4 +587,21 @@ public class SObjectUtils {
             return new Set<String>(String.join(new List<String>(fields),',').toLowerCase().split(','));
         }
     }
+
+    public static string getFieldNameLike(String objectName, String fieldNamePart) {
+        return getFieldNameLike(getSObjectTypeInstance(objectName),fieldNamePart);
+    }
+
+    public static string getFieldNameLike(SObjectType objectToken, String fieldNamePart) {
+        return getFieldNameLike(getDescribeInstance(objectToken),fieldNamePart);
+    }
+
+    public static string getFieldNameLike(DescribeSObjectResult objectDescribe, String fieldNamePart) {
+        for (String fieldName : objectDescribe.fields.getMap().keySet()) {
+            if (fieldName.toLowerCase().contains(fieldNamePart)) {
+                return fieldName;
+            }
+        }
+        return null;
+    }
 }

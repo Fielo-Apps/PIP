@@ -129,9 +129,16 @@ public without sharing class SimulatorService {
         query += ' FROM ' + objectName;
         query += ' WHERE ' + getWhereCondition(dataFilters, objectName);
 
+        String lastModifiedDateField = SObjectUtils.getFieldNameLike(objectName, 'LastModifiedDate');
+
+        String defaultOrderBy = '';
+        if (String.isNotBlank(lastModifiedDateField)) {
+            defaultOrderBy = lastModifiedDateField + ' DESC ';
+        }
+
         // ORDER BY
-        if (orderBy == null){
-            orderBy = 'LastModifiedDate DESC';
+        if (orderBy == null && String.isNotBlank(defaultOrderBy)){
+            orderBy = defaultOrderBy;
         }
         query += ' ORDER BY '+ orderBy;
 

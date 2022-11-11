@@ -63,6 +63,7 @@ export default class CcSimpleSimulator extends LightningElement {
   @api objectName;
   @api dateField = 'CreatedDate';
   @api additionalFilter;
+  @api orderBy;
 
   connectedCallback() {
     console.info(`objectName: ${this.objectName}`);
@@ -118,7 +119,8 @@ export default class CcSimpleSimulator extends LightningElement {
       objectName: this.objectName,
       jsonFilter: this.filters,
       recordsPerPage: recordsPerPage + 1,
-      offset: this.offset
+      offset: this.offset,
+      orderBy: this.orderBy
     })
     .then(result => {
       this.relatedRecords = [];

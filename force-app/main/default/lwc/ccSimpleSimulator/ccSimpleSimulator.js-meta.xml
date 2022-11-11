@@ -33,6 +33,13 @@
                 description="Additional Filter"
                 default=""
             />
+            <property
+                name="sortBy"
+                type="String"
+                label="Sort By"
+                description="Sort By"
+                default=""
+            />
         </targetConfig>
     </targetConfigs>
 </LightningComponentBundle>
