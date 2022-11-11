@@ -40,6 +40,13 @@
                 description="Sort By"
                 default=""
             />
+            <property
+                name="excludeActionCondition"
+                type="Boolean"
+                label="Exclude Action Condition"
+                description="This will remove from the list records that already apply to the action condition."
+                default=""
+            />
         </targetConfig>
     </targetConfigs>
 </LightningComponentBundle>

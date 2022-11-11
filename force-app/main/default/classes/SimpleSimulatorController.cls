@@ -19,6 +19,11 @@ public class SimpleSimulatorController {
 
     @AuraEnabled
     public static Object getRecords(String memberId, String objectName, String jsonFilter, String recordsPerPage, String offset, String orderBy){
+        return getRecords(memberId, objectName, jsonFilter, recordsPerPage, offset, orderBy, false);
+    }
+
+    @AuraEnabled
+    public static Object getRecords(String memberId, String objectName, String jsonFilter, String recordsPerPage, String offset, String orderBy, Boolean excludeActionCondition){
         try {
             if (String.isBlank(recordsPerPage)) {
                 recordsPerPage = '10';
@@ -76,14 +81,16 @@ public class SimpleSimulatorController {
                     if (String.isNotBlank(action.FieloPLT__ConditionField__c) && !fieldsByObject.isEmpty()) {
                         fieldsByObject.get(objectName).add(action.FieloPLT__ConditionField__c);
 
-                        if (objectFields.get(action.FieloPLT__ConditionField__c).getDescribe().getType().name().tolowercase() == 'boolean') {
-                            actionFilter = new Map<String,Object>{
-                                action.FieloPLT__ConditionField__c => (Object) 'BOOLEAN:' + (action.FieloPLT__ConditionValue__c.tolowercase() == 'true' ? 'false' : 'true')
-                            };
-                        } else {
-                            actionFilter = new Map<String,Object>{
-                                action.FieloPLT__ConditionField__c => (Object) '!' + action.FieloPLT__ConditionValue__c
-                            };
+                        if (excludeActionCondition == true) {
+                            if (objectFields.get(action.FieloPLT__ConditionField__c).getDescribe().getType().name().tolowercase() == 'boolean') {
+                                actionFilter = new Map<String,Object>{
+                                    action.FieloPLT__ConditionField__c => (Object) 'BOOLEAN:' + (action.FieloPLT__ConditionValue__c.tolowercase() == 'true' ? 'false' : 'true')
+                                };
+                            } else {
+                                actionFilter = new Map<String,Object>{
+                                    action.FieloPLT__ConditionField__c => (Object) '!' + action.FieloPLT__ConditionValue__c
+                                };
+                            }
                         }
 
                         actionFilters.add(SimulatorService.getWhereCondition(JSON.serialize(actionFilter),objectName));
