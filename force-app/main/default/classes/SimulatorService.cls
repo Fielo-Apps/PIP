@@ -140,7 +140,10 @@ public without sharing class SimulatorService {
         if (orderBy == null && String.isNotBlank(defaultOrderBy)){
             orderBy = defaultOrderBy;
         }
-        query += ' ORDER BY '+ orderBy;
+
+        if (String.isNotBlank(orderBy)) {
+            query += ' ORDER BY '+ orderBy;
+        }
 
         // LIMIT & OFFSET
         if (recordsPerPage != null) {
