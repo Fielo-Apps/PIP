@@ -1,5 +1,6 @@
 import { LightningElement, track, api } from 'lwc';
 import getRecords from '@salesforce/apex/SimpleSimulatorController.getRecords';
+import getRecord from '@salesforce/apex/SimpleSimulatorController.getRecord';
 import translateIds from '@salesforce/apex/SimpleSimulatorController.translateIds';
 import simulate from '@salesforce/apex/SimpleSimulatorController.simulate';
 import getConfiguration from '@salesforce/apex/SimpleSimulatorController.getConfiguration';
@@ -14,6 +15,7 @@ export default class CcSimpleSimulator extends LightningElement {
   @track member = {
     id: ''
   };
+  @track memberId;
   @track hasMember = false;
   @track hasRecords = false;
   @track hasSelectedRecords = false;
@@ -29,6 +31,8 @@ export default class CcSimpleSimulator extends LightningElement {
   @track selectedRowsIds;
 
   @track currencySummary;
+
+  currencyInfo;
 
   @track currencySummaryItemSize;
 
@@ -58,15 +62,41 @@ export default class CcSimpleSimulator extends LightningElement {
 
   @api objectName;
   @api dateField = 'CreatedDate';
+  @api additionalFilter;
+  @api orderBy;
+  @api excludeActionCondition;
+  @api includeContributorRecords;
 
   connectedCallback() {
-    console.log(`objectName: ${this.objectName}`);
-    console.log(`dateField: ${this.dateField}`);
     this.showSpinner = true;
+
+    document.addEventListener('mxmemberselector__memberselected', this.handleMemberSelected.bind(this));
+
+    if (!this.memberSelected) {
+      document.dispatchEvent(new CustomEvent('mxmemberselector__fireevents'));
+    }
 
     loadStyle(this, pipCss).catch((error) => {
       console.warn(error);
     });
+  }
+
+  handleMemberSelected(event) {
+    if (event.detail !== this.memberId) {
+      this.memberId = event.detail;
+      this.updateMember();
+    }
+  }
+
+  async updateMember() {
+    try {
+      this.member = await getRecord({recordId:this.memberId});
+      this.member.id = this.member.Id;
+      this.getRelatedRecords();
+      this.getFieloConfiguration();
+    } catch (error) {
+      console.error(error);
+    }
   }
 
   @api
@@ -81,12 +111,18 @@ export default class CcSimpleSimulator extends LightningElement {
 
   getRelatedRecords(){
     this.showSpinner = true;
+
+    this.assembleFilter();
+
     getRecords({
-      memberId: this.member.Id,
+      memberId: this.objectName.endsWith('__x') ? this.member.FieloPLT__ExternalId__c : this.member.Id,
       objectName: this.objectName,
       jsonFilter: this.filters,
       recordsPerPage: recordsPerPage + 1,
-      offset: this.offset
+      offset: this.offset,
+      orderBy: this.orderBy,
+      excludeActionCondition: this.excludeActionCondition,
+      includeContributorRecords: this.includeContributorRecords
     })
     .then(result => {
       this.relatedRecords = [];
@@ -148,38 +184,79 @@ export default class CcSimpleSimulator extends LightningElement {
     })
     .then(output => {
       var idsToTranslate = [];
-      var outputObj = JSON.parse(output);
+      if (output && output.indexOf('{') != -1) {
+        var outputObj = JSON.parse(output);
 
-      Object.keys(outputObj).forEach(currencyId => {
-        idsToTranslate.push(currencyId);
-        Object.keys(outputObj[currencyId].records).forEach(recordId => {
-          idsToTranslate.push(recordId);
-          Object.keys(outputObj[currencyId].records[recordId].incentives).forEach(incentiveId => {
-            idsToTranslate.push(incentiveId);
+        Object.keys(outputObj) && Object.keys(outputObj).forEach(currencyId => {
+          idsToTranslate.push(currencyId);
+          Object.keys(outputObj[currencyId].records).forEach(recordId => {
+            idsToTranslate.push(recordId);
+            Object.keys(outputObj[currencyId].records[recordId].incentives).forEach(incentiveId => {
+              idsToTranslate.push(incentiveId);
+            })
           })
         })
-      })
 
-      var outputStr = output;
+        var outputStr = output;
 
-      translateIds({idsToTranslate: idsToTranslate})
-      .then(translationMap => {
+        translateIds({idsToTranslate: idsToTranslate})
+        .then(translationMap => {
+          Object.keys(translationMap).forEach(fObjectId => {
+            outputStr = outputStr.replaceAll(fObjectId, translationMap[fObjectId]);
+          });
+          this.output = outputStr;
+          console.log(this.output);
+          this.showOutput = true;
+          this.jsonToTable(JSON.parse(this.output));
+          this.showSpinner = false;
+        })
+        .catch(error => {
+          this.handleError(error);
+        })
+      }
+    })
+    .catch(error => {
+      this.handleError(error);
+    })
+  }
+
+  async callSimulate() {
+    try {
+      var output = await simulate({
+        memberId: this.member.Id,
+        records: this.selectedRowsDataList
+      });
+      var idsToTranslate = [];
+      if (output && output.indexOf('{') != -1) {
+        var outputObj = JSON.parse(output);
+
+        Object.keys(outputObj) && Object.keys(outputObj).forEach(currencyId => {
+          idsToTranslate.push(currencyId);
+          Object.keys(outputObj[currencyId].records).forEach(recordId => {
+            idsToTranslate.push(recordId);
+            Object.keys(outputObj[currencyId].records[recordId].incentives).forEach(incentiveId => {
+              idsToTranslate.push(incentiveId);
+            })
+          })
+        })
+
+        var outputStr = output;
+
+        var translationMap = await translateIds({idsToTranslate: idsToTranslate});
+
         Object.keys(translationMap).forEach(fObjectId => {
           outputStr = outputStr.replaceAll(fObjectId, translationMap[fObjectId]);
         });
+
         this.output = outputStr;
         console.log(this.output);
         this.showOutput = true;
         this.jsonToTable(JSON.parse(this.output));
         this.showSpinner = false;
-      })
-      .catch(error => {
-        this.handleError(error);
-      })
-    })
-    .catch(error => {
+      }
+    } catch (error) {
       this.handleError(error);
-    })
+    }
   }
 
   getFieloConfiguration() {
@@ -196,6 +273,15 @@ export default class CcSimpleSimulator extends LightningElement {
       this.outputSummaryColumns = [...this.config.columns.filter(function (col){return col.fieldName !== 'record'})];
       let incentiveIndex = this.outputSummaryColumns.map(function(col) {return col.fieldName; }).indexOf('incentive');
       this.outputSummaryColumns[incentiveIndex].label += ` > ${colRecord.label}`;
+
+      if (this.config?.currenciesMap && Object.keys(this.config.currenciesMap).length) {
+        this.currencyInfo = Object.keys(this.config.currenciesMap).reduce((map, currId) => {
+          if (this.config.currenciesMap?.[currId]?.Name) {
+            map[this.config.currenciesMap[currId].Name] = this.config.currenciesMap[currId];
+          }
+          return map;
+        }, {});
+      }
 
       if (this.config.dateField) {
         this.filterLabels.from = `${this.config.dateField.label} ${this.filterLabels.from}`;
@@ -240,6 +326,7 @@ export default class CcSimpleSimulator extends LightningElement {
         name: curr,
         amount: result[curr].amount,
         maximum: result[curr].maximum,
+        symbol: this.currencyInfo?.[curr]?.FieloPLT__Symbol__c,
         remaining: result[curr].maximum-result[curr].amount,
         percent: (result[curr].amount/result[curr].maximum)*100
       });
@@ -398,27 +485,45 @@ export default class CcSimpleSimulator extends LightningElement {
   filterFromElement;
   filterToElement;
 
-  handleFilter() {
-    this.initFilter();
+  assembleFilter() {
+    try {
+      this.initFilter();
 
-    let dateFilterStr = this.filterFromElement &&
-      this.filterFromElement.value &&
-      this.filterFromElement.value != "null" &&
-      `FROM:${this.filterFromElement.value}` || '';
+      let dateFilterStr = this.filterFromElement &&
+        this.filterFromElement.value &&
+        this.filterFromElement.value != "null" &&
+        `FROM:${this.filterFromElement.value}` || '';
 
-    dateFilterStr += this.filterToElement &&
-      this.filterToElement.value &&
-      this.filterToElement.value != "null" &&
-      `TO:${this.filterToElement.value}`;
+      dateFilterStr += this.filterToElement &&
+        this.filterToElement.value &&
+        this.filterToElement.value != "null" &&
+        `TO:${this.filterToElement.value}`;
 
-    if (dateFilterStr) {
       let filter = {};
-      filter[this.dateField] = dateFilterStr;
-      this.filters = JSON.stringify(filter);
+
+      if (this.additionalFilter != null && this.additionalFilter != undefined && this.additionalFilter != '') {
+        try {
+          filter = Object.assign(filter, JSON.parse(this.additionalFilter));
+        } catch (error) {
+          console.error(error);
+        }
+      }
+
+      if (dateFilterStr) {
+        filter[this.dateField] = dateFilterStr;
+      }
+
+      if (Object.keys(filter) && Object.keys(filter).length) {
+        this.filters = JSON.stringify(filter);
+      } else {
+        this.filters = null;
+      }
+    } catch (error) {
+      console.error(error);
     }
+  }
 
-    console.log(this.filters);
-
+  handleFilter() {
     this.getRelatedRecords();
   }
 

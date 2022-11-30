@@ -2,7 +2,7 @@
 <LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
     <apiVersion>50.0</apiVersion>
     <isExposed>true</isExposed>
-    <masterLabel>Fielo - PIP Simulator lwc</masterLabel>
+    <masterLabel>Fielo - PIP Simulator (lwc)</masterLabel>
     <targets>
         <target>lightning__AppPage</target>
         <target>lightning__RecordPage</target>
@@ -10,4 +10,50 @@
         <target>lightningCommunity__Page</target>
         <target>lightningCommunity__Default</target>
     </targets>
+    <targetConfigs>
+        <targetConfig targets="lightningCommunity__Default, lightning__AppPage, lightning__RecordPage, lightning__HomePage">
+            <property
+                name="objectName"
+                type="String"
+                label="Object Name"
+                description="Enter the object you want to simulate."
+                default=""
+            />
+            <property
+                name="dateField"
+                type="String"
+                label="Date field"
+                description="Enter the date field api name you want use to filter the records."
+                default=""
+            />
+            <property
+                name="additionalFilter"
+                type="String"
+                label="Additional Filter"
+                description="Additional Filter"
+                default=""
+            />
+            <property
+                name="orderBy"
+                type="String"
+                label="Order By"
+                description="Sort By"
+                default=""
+            />
+            <property
+                name="excludeActionCondition"
+                type="Boolean"
+                label="Exclude Action Condition"
+                description="When checked, records that already apply to the action condition won't be displayed."
+                default="true"
+            />
+            <property
+                name="includeContributorRecords"
+                type="Boolean"
+                label="Include all organization records"
+                description="When checked, records that are related to organization contributors or individuals will be also displayed."
+                default="true"
+            />
+        </targetConfig>
+    </targetConfigs>
 </LightningComponentBundle>
