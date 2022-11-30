@@ -47,6 +47,13 @@
                 description="When checked, records that already apply to the action condition won't be displayed."
                 default="true"
             />
+            <property
+                name="includeContributorRecords"
+                type="Boolean"
+                label="Include all organization records"
+                description="When checked, records that are related to organization contributors or individuals will be also displayed."
+                default="true"
+            />
         </targetConfig>
     </targetConfigs>
 </LightningComponentBundle>

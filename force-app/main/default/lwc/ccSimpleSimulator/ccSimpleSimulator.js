@@ -65,10 +65,9 @@ export default class CcSimpleSimulator extends LightningElement {
   @api additionalFilter;
   @api orderBy;
   @api excludeActionCondition;
+  @api includeContributorRecords;
 
   connectedCallback() {
-    console.info(`objectName: ${this.objectName}`);
-    console.info(`dateField: ${this.dateField}`);
     this.showSpinner = true;
 
     document.addEventListener('mxmemberselector__memberselected', this.handleMemberSelected.bind(this));
@@ -122,7 +121,8 @@ export default class CcSimpleSimulator extends LightningElement {
       recordsPerPage: recordsPerPage + 1,
       offset: this.offset,
       orderBy: this.orderBy,
-      excludeActionCondition: this.excludeActionCondition
+      excludeActionCondition: this.excludeActionCondition,
+      includeContributorRecords: this.includeContributorRecords
     })
     .then(result => {
       this.relatedRecords = [];
@@ -187,7 +187,7 @@ export default class CcSimpleSimulator extends LightningElement {
       if (output && output.indexOf('{') != -1) {
         var outputObj = JSON.parse(output);
 
-        Object.keys(outputObj).forEach(currencyId => {
+        Object.keys(outputObj) && Object.keys(outputObj).forEach(currencyId => {
           idsToTranslate.push(currencyId);
           Object.keys(outputObj[currencyId].records).forEach(recordId => {
             idsToTranslate.push(recordId);
@@ -218,6 +218,45 @@ export default class CcSimpleSimulator extends LightningElement {
     .catch(error => {
       this.handleError(error);
     })
+  }
+
+  async callSimulate() {
+    try {
+      var output = await simulate({
+        memberId: this.member.Id,
+        records: this.selectedRowsDataList
+      });
+      var idsToTranslate = [];
+      if (output && output.indexOf('{') != -1) {
+        var outputObj = JSON.parse(output);
+
+        Object.keys(outputObj) && Object.keys(outputObj).forEach(currencyId => {
+          idsToTranslate.push(currencyId);
+          Object.keys(outputObj[currencyId].records).forEach(recordId => {
+            idsToTranslate.push(recordId);
+            Object.keys(outputObj[currencyId].records[recordId].incentives).forEach(incentiveId => {
+              idsToTranslate.push(incentiveId);
+            })
+          })
+        })
+
+        var outputStr = output;
+
+        var translationMap = await translateIds({idsToTranslate: idsToTranslate});
+
+        Object.keys(translationMap).forEach(fObjectId => {
+          outputStr = outputStr.replaceAll(fObjectId, translationMap[fObjectId]);
+        });
+
+        this.output = outputStr;
+        console.log(this.output);
+        this.showOutput = true;
+        this.jsonToTable(JSON.parse(this.output));
+        this.showSpinner = false;
+      }
+    } catch (error) {
+      this.handleError(error);
+    }
   }
 
   getFieloConfiguration() {

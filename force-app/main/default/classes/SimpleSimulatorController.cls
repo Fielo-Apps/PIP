@@ -19,11 +19,16 @@ public class SimpleSimulatorController {
 
     @AuraEnabled
     public static Object getRecords(String memberId, String objectName, String jsonFilter, String recordsPerPage, String offset, String orderBy){
-        return getRecords(memberId, objectName, jsonFilter, recordsPerPage, offset, orderBy, false);
+        return getRecords(memberId, objectName, jsonFilter, recordsPerPage, offset, orderBy, false, true);
     }
 
     @AuraEnabled
-    public static Object getRecords(String memberId, String objectName, String jsonFilter, String recordsPerPage, String offset, String orderBy, Boolean excludeActionCondition){
+    public static Object getRecords(String memberId, String objectName, String jsonFilter, String recordsPerPage, String offset, String orderBy, Boolean excludeActionCondition) {
+        return getRecords(memberId, objectName, jsonFilter, recordsPerPage, offset, orderBy, excludeActionCondition, true);
+    }
+
+    @AuraEnabled
+    public static Object getRecords(String memberId, String objectName, String jsonFilter, String recordsPerPage, String offset, String orderBy, Boolean excludeActionCondition, Boolean includeContributorRecords){
         try {
             if (String.isBlank(recordsPerPage)) {
                 recordsPerPage = '10';
@@ -121,17 +126,24 @@ public class SimpleSimulatorController {
 
             Map<String, Schema.SObjectField> objectFields = ((sObject)Type.forName(objectName).newInstance()).getSObjectType().getDescribe().fields.getMap();
 
+            if (includeContributorRecords == null) includeContributorRecords = true;
+
+            Set<String> fieldsToAdd = new Set<String>();
             Set<String> memberFilter = new Set<String>();
             for (SObjectField fieldToken : objectFields.values()) {
                 if(fieldToken.getDescribe().getType().name().toLowerCase() == 'reference' && fieldToken.getDescribe().getReferenceTo().get(0).getDescribe().getName() == 'FieloPLT__Member__c') {
                     memberFilter.add(fieldToken.getDescribe().getName() + ' = :memberId');
+                    fieldsToAdd.add(fieldToken.getDescribe().getName());
+                    if (includeContributorRecords) {
+                        fieldsToAdd.add(fieldToken.getDescribe().getRelationshipName() + '.FieloPLT__OrganizationAccount__c');
+                        memberFilter.add(fieldToken.getDescribe().getRelationshipName() + '.FieloPLT__OrganizationAccount__c = :memberId');
+                    }
                 }
             }
 
             String fieldType;
             Map<String,Object> col;
             Schema.DescribeFieldResult fieldDescribe;
-            Set<String> fieldsToAdd = new Set<String>();
             for (String fieldName : fieldsByObject.get(objectName)) {
                 if (fieldName != 'FieloPLT__Member__c' && fieldName.containsNone('.')) {
                     fieldDescribe = objectFields.get(fieldName)?.getDescribe();
@@ -212,10 +224,13 @@ public class SimpleSimulatorController {
                 }
             }
 
+            Map<String, Set<String>> cacheFieldsByObject = (Map<String, Set<String>>) FieloPLT.CacheAPI.execute('{"cache":"Criteria", "method": "get", "attribute": "externalFieldsByObject"}');
+
             fields.addAll(fieldsToAdd);
             fields.addAll(fieldsByObject.get(objectName));
+            fields.addAll(cacheFieldsByObject.get(objectName));
 
-            fields = SimulatorService.deleteDuplicateFields(fields);
+            fields = SObjectUtils.deleteDuplicateFields(fields);
 
             List<String> whereClauses = new List<String>{'(' + String.join(new List<String>(memberFilter), ' OR ') + ')'};
 
@@ -257,12 +272,7 @@ public class SimpleSimulatorController {
 
     @AuraEnabled
     public static String simulate(String memberId, List<SObject> records){
-        try {
-            return JSON.serializePretty(FieloPLT.SimulationAPI.simulateRewarding(records, Id.valueOf(memberId), false));
-        } catch (Exception e) {
-            ErrorService.insertError(e);
-            return null;
-        }
+        return JSON.serializePretty(FieloPLT.SimulationAPI.simulateRewarding(records, Id.valueOf(memberId), false));
     }
 
     @AuraEnabled

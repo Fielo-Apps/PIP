@@ -21,7 +21,7 @@ public without sharing class SimulatorService {
     public static final string EMPTY_SPACES_REGEXP = '\\s(?![^\\(]*\\))';
 
     public static set<String> deleteDuplicateFields(Set<String> fields){
-        return new Set<String>(String.join(new List<String>(fields), ',').toLowerCase().replaceAll(EMPTY_SPACES_REGEXP,'').split(','));
+        return SObjectUtils.deleteDuplicateFields(fields);
     }
 
     public static string getPathLabel(String objectName, String path) {

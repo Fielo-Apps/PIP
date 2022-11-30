@@ -604,4 +604,19 @@ public class SObjectUtils {
         }
         return null;
     }
+
+    // removes all spaces from names not between ()
+    // it won't break sub queries
+    public static final string EMPTY_SPACES_REGEXP = '\\s(?![^\\(]*\\))';
+
+    public static set<String> deleteDuplicateFields(List<String> fields) {
+
+        String query = String.join(fields, ',').toLowerCase().replaceAll('\\s*,\\s*',',');
+
+        return new Set<String>(query.split(',(?![^\\(]*\\))'));
+    }
+
+    public static set<String> deleteDuplicateFields(Set<String> fields){
+        return deleteDuplicateFields(new List<String>(fields));
+    }
 }

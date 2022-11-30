@@ -484,4 +484,12 @@ public class TestSObjectUtils {
         System.assertEquals(lastModifiedDateField, lastModifiedDateField1);
         System.assertEquals(lastModifiedDateField, lastModifiedDateField2);
     }
+
+    @istest
+    static void deleteDuplicateFields() {
+        set<String> fields1 = SObjectUtils.deleteDuplicateFields(new Set<String>{'Name','nAmE','NAME',' Name '});
+        set<String> fields2 = SObjectUtils.deleteDuplicateFields(new Set<String>{'Name','nAmE','NAME',' Name '});
+
+        System.assert(fields1.equals(fields2));
+    }
 }
