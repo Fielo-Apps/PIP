@@ -9,7 +9,7 @@ import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { subscribe, unsubscribe, onError, setDebugFlag, isEmpEnabled } from 'lightning/empApi';
 
 export default class BSimpleSimulator extends LightningElement {
-    channelName = '/event/PipSim__SimulationResult__e';
+    channelName = '/event/FieloPIP__SimulationResult__e';
     subscription;
     isSubscribeDisabled = false;
     isUnsubscribeDisabled = !this.isSubscribeDisabled;
@@ -86,7 +86,7 @@ export default class BSimpleSimulator extends LightningElement {
     getRelatedRecords(){
       getRecords({
         memberId: this.member,
-        objectName: this.objectValue,
+        objectName: this.objectValue
       })
       .then(result => {
         this.relatedRecords = [];
@@ -247,8 +247,8 @@ export default class BSimpleSimulator extends LightningElement {
                 // Response contains the subscription information on subscribe call
                 console.log('New message received: ', JSON.stringify(response.data, null, 2));
 
-                if (response && response.data && response.data.payload && response.data.payload.PipSim__Result__c) {
-                  this.setOutput(response.data.payload.PipSim__Result__c);
+                if (response && response.data && response.data.payload && response.data.payload.FieloPIP__Result__c) {
+                  this.setOutput(response.data.payload.FieloPIP__Result__c);
                 }
             }.bind(this)
         );

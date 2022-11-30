@@ -21,7 +21,7 @@ public without sharing class SimulatorService {
     public static final string EMPTY_SPACES_REGEXP = '\\s(?![^\\(]*\\))';
 
     public static set<String> deleteDuplicateFields(Set<String> fields){
-        return new Set<String>(String.join(new List<String>(fields), ',').toLowerCase().replaceAll(EMPTY_SPACES_REGEXP,'').split(','));
+        return SObjectUtils.deleteDuplicateFields(fields);
     }
 
     public static string getPathLabel(String objectName, String path) {
@@ -127,17 +127,23 @@ public without sharing class SimulatorService {
             query += String.join(fieldset, ',');
         }
         query += ' FROM ' + objectName;
+        query += ' WHERE ' + getWhereCondition(dataFilters, objectName);
 
-        String whereClause = getWhereCondition(dataFilters, objectName);
-        if (String.isNotBlank(whereClause)) {
-            query += ' WHERE ' + whereClause;
+        String lastModifiedDateField = SObjectUtils.getFieldNameLike(objectName, 'LastModifiedDate');
+
+        String defaultOrderBy = '';
+        if (String.isNotBlank(lastModifiedDateField)) {
+            defaultOrderBy = lastModifiedDateField + ' DESC ';
         }
 
         // ORDER BY
-        if (orderBy == null){
-            orderBy = 'LastModifiedDate DESC';
+        if (orderBy == null && String.isNotBlank(defaultOrderBy)){
+            orderBy = defaultOrderBy;
         }
-        query += ' ORDER BY '+ orderBy;
+
+        if (String.isNotBlank(orderBy)) {
+            query += ' ORDER BY '+ orderBy;
+        }
 
         // LIMIT & OFFSET
         if (recordsPerPage != null) {
@@ -157,27 +163,40 @@ public without sharing class SimulatorService {
         Map<String, Schema.SObjectField> objectFields = ((sObject)Type.forName(objectName).newInstance()).getSObjectType().getDescribe().fields.getMap();
 
         String whereCondition = '';
+        List<String> whereConditions = new List<String>();
+
         if (String.isNotBlank(filterJson) && filterJson != null ) {
             try {
                 Map<String,Object> filter = (Map<String, Object>) JSON.deserializeUntyped( filterJson);
                 for ( String k :filter.keySet() ) {
                     String value = string.valueOf(filter.get(k));
                     if (value == null || value == 'null') {
-                        whereCondition += ' AND ' + String.escapeSingleQuotes(k) + ' = null';
+                        whereConditions.add(String.escapeSingleQuotes(k) + ' = null');
                     } else if(value.toLowerCase() == '!null') {
-                        whereCondition += ' AND ' + String.escapeSingleQuotes(k) + ' != null';
+                        whereConditions.add(String.escapeSingleQuotes(k) + ' != null');
                     } else {
                         if(value.startsWith('BOOLEAN:')){
-                                whereCondition += ' AND ' + String.escapeSingleQuotes(k) + ' = ' +  String.escapeSingleQuotes(value.removeStart('BOOLEAN:'));
+                            whereConditions.add(String.escapeSingleQuotes(k) + ' = ' +  String.escapeSingleQuotes(value.removeStart('BOOLEAN:')));
                         } else if(value.startsWith('LIKE:')){
                                 if (objectName.toLowerCase() == 'fieloplt__member__c' && String.escapeSingleQuotes(k).toLowerCase() == 'name') {
-                                    whereCondition += ' AND (' + String.escapeSingleQuotes(k) + ' LIKE \'%' +  String.escapeSingleQuotes(value.removeStart('LIKE:')) + '%\'' +
-                                    ' OR FieloPLT__Email__c LIKE \'%' +  String.escapeSingleQuotes(value.removeStart('LIKE:')) + '%\') ';
+                                    whereConditions.add('(' + String.escapeSingleQuotes(k) + ' LIKE \'%' +  String.escapeSingleQuotes(value.removeStart('LIKE:')) + '%\'' +
+                                    ' OR FieloPLT__Email__c LIKE \'%' +  String.escapeSingleQuotes(value.removeStart('LIKE:')) + '%\') ');
                                 } else {
-                                    whereCondition += ' AND ' + String.escapeSingleQuotes(k) + ' LIKE \'%' +  String.escapeSingleQuotes(value.removeStart('LIKE:')) + '%\'';
+                                    whereConditions.add(String.escapeSingleQuotes(k) + ' LIKE \'%' +  String.escapeSingleQuotes(value.removeStart('LIKE:')) + '%\'');
                                 }
                         } else if ( value.startsWith('!') ) {
-                                whereCondition += ' AND ' + String.escapeSingleQuotes(k) + ' <> \'' +  String.escapeSingleQuotes(value.substring(1)) + '\'';
+                            if ( value.startsWith('!IN:') ) {
+                                string value2 = value.removeStart('!IN:');
+                                List<String> ids = new List<String>();
+
+                                for(String str: value2.split(',')){
+                                    string strc = '\'' + str  + '\'';
+                                    ids.add(strc);
+                                }
+                                whereConditions.add(String.escapeSingleQuotes(k) + ' NOT IN ' + ids);
+                            } else {
+                                whereConditions.add(String.escapeSingleQuotes(k) + ' <> \'' +  String.escapeSingleQuotes(value.substring(1)) + '\'');
+                            }
                         } else if ( value.startsWith('IN:') ) {
                                 string value2 = value.removeStart('IN:');
                                 List<String> ids = new List<String>();
@@ -186,7 +205,7 @@ public without sharing class SimulatorService {
                                     string strc = '\'' + str  + '\'';
                                     ids.add(strc);
                                 }
-                                whereCondition += ' AND '  + String.escapeSingleQuotes(k) + ' IN ' + ids;
+                                whereConditions.add(String.escapeSingleQuotes(k) + ' IN ' + ids);
                         } else if ( value.startsWith('FROM:') ) {
                             value = value.removeStart('FROM:');
 
@@ -200,15 +219,7 @@ public without sharing class SimulatorService {
                                 }
 
                                 for (Integer i = 0; i < numbers.size(); i++) {
-                                    whereCondition += ' AND ' + String.escapeSingleQuotes(k);
-                                    if (i == 0) {
-                                        // FROM
-                                        whereCondition += ' >= ';
-                                    } else {
-                                        // TO
-                                        whereCondition += ' <= ';
-                                    }
-                                    whereCondition += numbers[i];
+                                    whereConditions.add( String.escapeSingleQuotes(k) + (i == 0 ? ' >= ' : ' <= ') + numbers[i]);
                                 }
 
                             } else {
@@ -226,44 +237,36 @@ public without sharing class SimulatorService {
                                     tempDate = Date.valueOf(dates[i]);
                                     tempDateTime = DateTime.newInstance(tempDate.year(), tempDate.month(), tempDate.day());
 
-                                    whereCondition += ' AND ' + String.escapeSingleQuotes(k);
-                                    if (i == 0) {
-                                        // FROM
-                                        whereCondition += ' >= ';
-                                    } else {
-                                        // TO
-                                        whereCondition += ' <= ';
-                                    }
-                                    if (objectFields.get(k).getDescribe().getType().name().tolowercase() == 'datetime') {
-                                        whereCondition += tempDateTime.format('yyyy-MM-dd\'T00:00:00Z\'');
-                                    } else {
-                                        whereCondition += tempDateTime.format('yyyy-MM-dd');
-                                    }
+                                    whereConditions.add(
+                                        String.escapeSingleQuotes(k) +
+                                        (i == 0 ? ' >= ' : ' <= ') +
+                                        (objectFields.get(k).getDescribe().getType().name().tolowercase() == 'datetime' ?
+                                            tempDateTime.format('yyyy-MM-dd\'T00:00:00Z\''):
+                                            tempDateTime.format('yyyy-MM-dd'))
+                                    );
                                 }
                             }
                         } else if ( value.startsWith('TO:') ) {
                             Date tempDate = Date.valueOf(value.removeStart('TO:'));
                             DateTime tempDateTime = DateTime.newInstance(tempDate.year(), tempDate.month(), tempDate.day());
 
-                            whereCondition += ' AND '  + String.escapeSingleQuotes(k) + ' <= ' + tempDateTime.format('yyyy-MM-dd\'T00:00:00Z\'') ;
+                            whereConditions.add(String.escapeSingleQuotes(k) + ' <= ' + tempDateTime.format('yyyy-MM-dd\'T00:00:00Z\''));
                         } else if ( objectName.tolowercase() == 'FieloPLT__Reward__c' && k.tolowercase() == 'fieloplt__program__c'){
-                                whereCondition += ' AND ( ' +
-                                    String.escapeSingleQuotes(k) + ' = \'' +  String.escapeSingleQuotes(value) + '\' OR ' +
-                                    String.escapeSingleQuotes(k) + ' = null ' +
-                                    ')';
+                            whereConditions.add('( ' +
+                                String.escapeSingleQuotes(k) + ' = \'' +  String.escapeSingleQuotes(value) + '\' OR ' +
+                                String.escapeSingleQuotes(k) + ' = null ' +
+                                ')'
+                            );
                         } else {
-                                whereCondition += ' AND ' + String.escapeSingleQuotes(k) + ' = \'' +  String.escapeSingleQuotes(value) + '\'';
+                            whereConditions.add(String.escapeSingleQuotes(k) + ' = \'' +  String.escapeSingleQuotes(value) + '\'');
                         }
                     }
-                }
-                if ( whereCondition != '') {
-                    whereCondition = whereCondition.substring(4);
                 }
             } catch( JSONException e ) {
                 system.debug(LoggingLevel.ERROR, 'INVALID JSON ' + filterJson );
             }
         }
-        return whereCondition;
+        return String.join(whereConditions, ' AND ');
     }
 
     public class CriteriaWrapper{
