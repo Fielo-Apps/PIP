@@ -96,9 +96,11 @@ public class SimpleSimulatorController {
                                     action.FieloPLT__ConditionField__c => (Object) '!' + action.FieloPLT__ConditionValue__c
                                 };
                             }
+                            String actionFilterStr = SimulatorService.getWhereCondition(JSON.serialize(actionFilter),objectName);
+                            if (String.isNotBlank(actionFilterStr)) {
+                                actionFilters.add(actionFilterStr);
+                            }
                         }
-
-                        actionFilters.add(SimulatorService.getWhereCondition(JSON.serialize(actionFilter),objectName));
                     }
                     if (fieldsByObject.get(objectName) != null) {
                         fieldsByObject.get(objectName).add(action.FieloPLT__RuleTrigger__r.FieloPLT__Date__c);
@@ -224,7 +226,11 @@ public class SimpleSimulatorController {
                 }
             }
 
-            Map<String, Set<String>> cacheFieldsByObject = (Map<String, Set<String>>) FieloPLT.CacheAPI.execute('{"cache":"Criteria", "method": "get", "attribute": "externalFieldsByObject"}');
+            Boolean hasExternalDataSource = [SELECT Id FROM ExternalDataSource LIMIT 1]?.isEmpty() == false;
+
+            String attribName = hasExternalDataSource ? 'externalFieldsByObject' : 'fieldsByObject';
+
+            Map<String, Set<String>> cacheFieldsByObject = (Map<String, Set<String>>) FieloPLT.CacheAPI.execute('{"cache":"Criteria", "method": "get", "attribute": "'+attribName+'"}');
 
             fields.addAll(fieldsToAdd);
             fields.addAll(fieldsByObject.get(objectName));
@@ -251,6 +257,8 @@ public class SimpleSimulatorController {
                     defaultOrderBy = ' ORDER BY ' + lastModifiedDateField + ' DESC ';
                 }
                 orderBy = defaultOrderBy;
+            } else {
+                orderBy = orderBy.tolowercase().contains('order by') ? orderBy : ( 'ORDER BY ' + orderBy);
             }
 
 
@@ -462,6 +470,97 @@ public class SimpleSimulatorController {
         fieloConfig.put('columns', columns);
 
         return fieloConfig;
+    }
+
+    @AuraEnabled
+    public static Object getAvailableSimulationObjects(String memberId) {
+
+        List<FieloPLT__Member__c> members = [SELECT Id, FieloPLT__Program__c FROM FieloPLT__Member__c WHERE Id =:memberId];
+
+        Set<String> availableObjects = new Set<String>();
+
+        if (!members.isEmpty()) {
+            Id programId = members.get(0).FieloPLT__Program__c;
+
+            Map<Id,FieloPLT__SimulationSettings__c> simulationSettingsMap =
+                new Map<Id,FieloPLT__SimulationSettings__c>(
+                    (List<FieloPLT__SimulationSettings__c>) Database.query(
+                        'SELECT ' +
+                            String.join(new List<String>(sObjectType.FieloPLT__SimulationSettings__c.fields.getMap().keySet()), ',') +
+                        ' FROM FieloPLT__SimulationSettings__c ' +
+                        ' WHERE FieloPLT__Program__c = :programId'
+                    )
+                );
+
+            Map<Id,Set<Id>> segmentsByMember = new Map<Id,Set<Id>>();
+            Set<Id> segmentedSettings = new Set<Id>();
+
+            for (FieloPLT__SimulationSettings__c ss : simulationSettingsMap.values()) {
+                if (ss.FieloPLT__Segment__c == null) {
+                    availableObjects.add(ss.FieloPLT__Object__c);
+                } else {
+                    segmentedSettings.add(ss.Id);
+                    if (segmentsByMember.containsKey(memberId)) {
+                        segmentsByMember.get(memberId).add(ss.FieloPLT__Segment__c);
+                    } else {
+                        segmentsByMember.put(memberId, new Set<Id>{ss.FieloPLT__Segment__c});
+                    }
+                }
+            }
+
+            if (!segmentsByMember.isEmpty()) {
+                FieloPLT.SegmentService.verifySegments(segmentsByMember);
+
+                for (Id ssId : segmentedSettings) {
+                    FieloPLT__SimulationSettings__c settings = simulationSettingsMap.get(ssId);
+                    if (segmentsByMember.get(memberId).contains(settings.FieloPLT__Segment__c)) {
+                        availableObjects.add(settings.FieloPLT__Object__c);
+                    }
+                }
+            }
+        }
+
+        List<String> sortedAvailableObjects = new List<String>(availableObjects);
+        sortedAvailableObjects.sort();
+
+        Map<String, Schema.DescribeSObjectResult> objectsSchema = new Map<String, Schema.DescribeSObjectResult>();
+        for (Schema.DescribeSObjectResult dsc : Schema.describeSObjects(sortedAvailableObjects)) {
+            objectsSchema.put(dsc.getName(), dsc);
+        }
+
+        List<Map<String,String>> result = new List<Map<String,String>>();
+
+        for (String objectName : sortedAvailableObjects) {
+            result.add(
+                new Map<String,String>{
+                    'name' => objectsSchema.get(objectName).getName(),
+                    'label' => objectsSchema.get(objectName).getLabel(),
+                    'labelPlural' => objectsSchema.get(objectName).getLabelPlural()
+                }
+            );
+        }
+
+        return result;
+    }
+
+    @AuraEnabled
+    public static Object getObjectsWithRecords(String memberId, List<String> objectNames) {
+        Set<String> objectsWithRecords = new Set<String>();
+
+        objectNames = new List<String>(new Set<String>(objectNames));
+
+        Set<String> memberClause;
+        for(String objectName : objectNames) {
+            memberClause = new Set<String>();
+            for (String memberLookup : SObjectUtils.getLookupsListToSObjectToken(objectName, FieloPLT__Member__c.sobjecttype)) {
+                memberClause.add(memberLookup + ' = :memberId ');
+            }
+            if (Database.countQuery('SELECT Count() FROM ' + objectName + ' WHERE (' + String.join(new List<String>(memberClause),' OR ') + ')' ) > 0) {
+                objectsWithRecords.add(objectName);
+            }
+        }
+
+        return objectsWithRecords;
     }
 
     @AuraEnabled
